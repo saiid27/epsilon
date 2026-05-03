@@ -16,6 +16,10 @@
     h1 { margin: 0 0 12px; font-size: 28px; }
     p { margin: 0 0 12px; color: #7380a2; font-size: 16px; line-height: 1.8; }
     .email { direction: ltr; display: inline-block; overflow-wrap: anywhere; }
+    .contact-list { display: grid; gap: 12px; margin: 18px 0; }
+    .contact-item { padding: 14px; border: 1px solid #e6ebf6; border-radius: 8px; background: #f8faff; }
+    .contact-item strong { display: block; margin-bottom: 6px; color: #1d2b53; font-size: 16px; }
+    .contact-item a { direction: ltr; display: inline-block; color: #25a85a; }
   </style>
 </head>
 <body>
@@ -26,7 +30,17 @@
     </div>
     <section class="card">
       <h1>تواصل معنا</h1>
-      <p>للاستفسارات، الدعم الفني، أو متابعة الاشتراك يمكنك مراسلتنا عبر البريد الإلكتروني.</p>
+      <p>للاستفسارات، التسجيل، أو الدعم في حال وجود مشكلة في الحساب يمكنك التواصل معنا عبر الأرقام التالية.</p>
+      <div class="contact-list">
+        <div class="contact-item">
+          <strong>رقم التواصل للاستفسار أو التسجيل</strong>
+          <a href="https://wa.me/22232203250" target="_blank" rel="noopener">32203250</a>
+        </div>
+        <div class="contact-item">
+          <strong>رقم التواصل عند حدوث خطأ أو مشكلة في الحساب</strong>
+          <a href="https://wa.me/22249677414" target="_blank" rel="noopener">49677414</a>
+        </div>
+      </div>
       <p><a class="email" href="mailto:dev.medsaidmohameden@gmail.com">dev.medsaidmohameden@gmail.com</a></p>
     </section>
   </main>
