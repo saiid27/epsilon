@@ -1,38 +1,77 @@
-<!DOCTYPE html><html lang="fr"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Panneau d’administration</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"></head>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>لوحة الإدارة</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+</head>
 <body class="bg-light">
 <nav class="navbar navbar-dark bg-dark">
   <div class="container-fluid">
     <span class="navbar-brand">مشرف</span>
-    <a class="btn btn-danger btn-sm" href="{{ url_for('logout') }}">تسجيل الدخول</a>
+    <a class="btn btn-danger btn-sm" href="{{ url_for('logout') }}">تسجيل الخروج</a>
   </div>
 </nav>
+
 <div class="container py-4">
-  {% with msgs=get_flashed_messages(with_categories=true) %}{% for c,m in msgs %}
-  <div class="alert alert-{{c}}">{{m}}</div>{% endfor %}{% endwith %}
+  {% with msgs=get_flashed_messages(with_categories=true) %}
+    {% for c,m in msgs %}
+      <div class="alert alert-{{c}}">{{m}}</div>
+    {% endfor %}
+  {% endwith %}
 
   <h5 class="mb-3">حسابات المستخدمين</h5>
   <div class="table-responsive">
-    <table class="table table-bordered align-middle text-center">
+    <table class="table table-bordered align-middle text-center bg-white">
       <thead class="table-dark">
-        <tr><th>ID</th><th>المستخدم</th><th>رقم الواتساب</th><th>نوعية الحساب</th><th>القسم</th><th>حالة الحساب</th><th> حالة الرقم</th><th>صورة الدفع</th><th>تأكيد او حذف</th></tr>
+        <tr>
+          <th>ID</th><th>المستخدم</th><th>رقم الواتساب</th><th>نوع الحساب</th>
+          <th>الدورة</th><th>المادة</th><th>حالة الحساب</th><th>حالة الرقم</th>
+          <th>صورة الدفع</th><th>إجراء</th>
+        </tr>
       </thead>
       <tbody>
         {% for u in users %}
         <tr>
-          <td>{{u.id}}</td><td>{{u.username}}</td><td>{{u.phone}}</td>
-          <td>{{u.role}}</td><td>{{u.level or '-'}}</td>
-          <td>{% if u.status=='pending' %}<span class="badge bg-warning text-dark">في الانتظار </span>{% else %}<span class="badge bg-success">نشط</span>{% endif %}</td>
-          <td>{% if u.phone_verified %}<span class="badge bg-success">Oui</span>{% else %}<span class="badge bg-secondary">Non</span>{% endif %}</td>
+          <td>{{ u.id }}</td>
+          <td>{{ u.username }}</td>
+          <td>{{ u.phone }}</td>
+          <td>{{ u.role }}</td>
+          <td>{{ u.level or '-' }}</td>
+          <td>{{ u.subject or '-' }}</td>
+          <td>
+            {% if u.status=='pending' %}
+              <span class="badge bg-warning text-dark">في الانتظار</span>
+            {% else %}
+              <span class="badge bg-success">نشط</span>
+            {% endif %}
+          </td>
+          <td>{% if u.phone_verified %}<span class="badge bg-success">نعم</span>{% else %}<span class="badge bg-secondary">لا</span>{% endif %}</td>
           <td>
             {% if u.payment_image %}
               <a class="btn btn-outline-secondary btn-sm" target="_blank"
-                 href="{{ url_for('static', filename='uploads/payments/' + u.payment_image) }}">عرض الصورة</a>
+                 href="{{ url_for('static', filename='uploads/payments/' + u.payment_image) }}">عرض</a>
             {% else %}-{% endif %}
           </td>
           <td class="d-flex gap-2 justify-content-center flex-wrap">
+            {% if u.role == 'teacher' %}
+              <form method="POST" action="{{ url_for('admin_assign_teacher', uid=u.id) }}" class="d-flex gap-1 flex-wrap justify-content-center">
+                <select name="level" class="form-select form-select-sm" style="width:110px" required>
+                  {% for course in courses %}
+                    <option value="{{ course.code }}" {% if u.level == course.code %}selected{% endif %}>{{ course.code }}</option>
+                  {% endfor %}
+                </select>
+                <select name="subject" class="form-select form-select-sm" style="width:140px" required>
+                  {% for item in course_subjects %}
+                    <option value="{{ item.subject }}" {% if u.subject == item.subject and u.level == item.course_code %}selected{% endif %}>
+                      {{ item.course_code }} - {{ item.subject }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <button class="btn btn-primary btn-sm">ربط</button>
+              </form>
+            {% endif %}
             <a class="btn btn-success btn-sm" href="{{ url_for('activate_user', uid=u.id) }}">قبول</a>
             <a class="btn btn-danger btn-sm" href="{{ url_for('delete_user', uid=u.id) }}">حذف</a>
           </td>
@@ -43,18 +82,156 @@
   </div>
 
   <hr class="my-4">
-  <h5 class="mb-3">انشاءحساب أستاذ</h5>
+  <h5 class="mb-3">إدارة الدورات</h5>
+  <div class="row g-3">
+    <div class="col-12 col-lg-5">
+      <div class="card p-3 shadow-sm">
+        <h6 class="mb-3">إضافة دورة جديدة</h6>
+        <form method="POST" action="{{ url_for('admin_create_course') }}">
+          <div class="row g-2">
+            <div class="col-6"><input name="code" class="form-control" placeholder="الكود مثل MPI" required></div>
+            <div class="col-6"><input name="title" class="form-control" placeholder="العنوان" required></div>
+            <div class="col-12"><input name="subtitle" class="form-control" placeholder="وصف قصير"></div>
+            <div class="col-12"><textarea name="description" class="form-control" rows="2" placeholder="شرح الدورة"></textarea></div>
+            <div class="col-6"><input name="badge" class="form-control" placeholder="متاح / قريبا"></div>
+            <div class="col-6"><input name="icon" class="form-control" placeholder="رمز مثل 📘"></div>
+            <div class="col-6">
+              <select name="theme" class="form-select">
+                <option value="blue">أزرق</option>
+                <option value="green">أخضر</option>
+                <option value="purple">بنفسجي</option>
+                <option value="orange">برتقالي</option>
+                <option value="cyan">سماوي</option>
+                <option value="pink">وردي</option>
+                <option value="indigo">نيلي</option>
+              </select>
+            </div>
+            <div class="col-6"><input type="number" name="sort_order" class="form-control" placeholder="الترتيب" value="0"></div>
+            <div class="col-12"><button class="btn btn-primary w-100">إضافة الدورة</button></div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-7">
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle text-center bg-white">
+          <thead class="table-dark">
+            <tr><th>الكود</th><th>العنوان</th><th>الحالة</th><th>الترتيب</th><th>حذف</th></tr>
+          </thead>
+          <tbody>
+            {% for course in courses %}
+            <tr>
+              <td>{{ course.code }}</td>
+              <td>{{ course.title }}</td>
+              <td>{{ course.badge or '-' }}</td>
+              <td>{{ course.sort_order }}</td>
+              <td>
+                <a class="btn btn-danger btn-sm"
+                   href="{{ url_for('admin_delete_course', cid=course.id) }}"
+                   onclick="return confirm('حذف هذه الدورة؟')">حذف</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">لا توجد دورات بعد.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <hr class="my-4">
+  <h5 class="mb-3">مواد الدورات</h5>
+  <div class="row g-3">
+    <div class="col-12 col-lg-5">
+      <div class="card p-3 shadow-sm">
+        <h6 class="mb-3">إضافة مادة لدورة</h6>
+        <form method="POST" action="{{ url_for('admin_create_course_subject') }}" class="row g-2">
+          <div class="col-12">
+            <select name="course_code" class="form-select" required>
+              {% for course in courses %}
+                <option value="{{ course.code }}">{{ course.title }} - {{ course.code }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-8"><input name="subject" class="form-control" placeholder="اسم المادة" required></div>
+          <div class="col-4"><input type="number" name="sort_order" class="form-control" value="0"></div>
+          <div class="col-12"><button class="btn btn-primary w-100">إضافة المادة</button></div>
+        </form>
+      </div>
+    </div>
+    <div class="col-12 col-lg-7">
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle text-center bg-white">
+          <thead class="table-dark">
+            <tr><th>الدورة</th><th>المادة</th><th>الترتيب</th><th>حذف</th></tr>
+          </thead>
+          <tbody>
+            {% for item in course_subjects %}
+            <tr>
+              <td>{{ item.course_code }}</td>
+              <td>{{ item.subject }}</td>
+              <td>{{ item.sort_order }}</td>
+              <td>
+                <a class="btn btn-danger btn-sm"
+                   href="{{ url_for('admin_delete_course_subject', sid=item.id) }}"
+                   onclick="return confirm('حذف هذه المادة؟')">حذف</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">لا توجد مواد بعد.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <hr class="my-4">
+  <h5 class="mb-3">إنشاء حساب أستاذ</h5>
   <form class="row g-2" method="POST" action="{{ url_for('admin_create_teacher') }}">
-    <div class="col-12 col-md-3"><input name="t_username" class="form-control" placeholder="الاسم" required></div>
-    <div class="col-12 col-md-3"><input name="t_phone" class="form-control" placeholder="الرقم" required></div>
-    <div class="col-12 col-md-3"><input name="t_password" class="form-control" placeholder="كلمة المرور  " required></div>
+    <div class="col-12 col-md-2"><input name="t_username" class="form-control" placeholder="الاسم" required></div>
+    <div class="col-12 col-md-2"><input name="t_phone" class="form-control" placeholder="الرقم" required></div>
+    <div class="col-12 col-md-2"><input name="t_password" class="form-control" placeholder="كلمة المرور" required></div>
     <div class="col-12 col-md-2">
-      <select name="t_level" class="form-select">
-        <option value="">Sans niveau</option>
-        <option value="4as">4AS</option><option value="7D">7D</option><option value="7O">7O</option>
+      <select name="t_level" id="teacherCourse" class="form-select" required>
+        <option value="">اختر الدورة</option>
+        {% for course in courses %}
+          <option value="{{ course.code }}">{{ course.title }}</option>
+        {% endfor %}
       </select>
     </div>
-    <div class="col-12 col-md-1"><button class="btn btn-primary w-100">اضافة</button></div>
+    <div class="col-12 col-md-3">
+      <select name="t_subject" id="teacherSubject" class="form-select" required>
+        <option value="">اختر المادة</option>
+        {% for item in course_subjects %}
+          <option value="{{ item.subject }}" data-course="{{ item.course_code }}">{{ item.course_code }} - {{ item.subject }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-12 col-md-1"><button class="btn btn-primary w-100">إضافة</button></div>
   </form>
 </div>
-</body></html>
+
+<script>
+  const courseSelect = document.getElementById('teacherCourse');
+  const subjectSelect = document.getElementById('teacherSubject');
+  function filterSubjects() {
+    const course = courseSelect.value;
+    [...subjectSelect.options].forEach((option) => {
+      if (!option.value) {
+        option.hidden = false;
+        return;
+      }
+      option.hidden = option.dataset.course !== course;
+    });
+    subjectSelect.value = '';
+  }
+  if (courseSelect && subjectSelect) {
+    courseSelect.addEventListener('change', filterSubjects);
+    filterSubjects();
+  }
+</script>
+</body>
+</html>

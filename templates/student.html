@@ -1,34 +1,79 @@
-<!DOCTYPE html><html lang="fr"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Espace Étudiant</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"></head>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>مساحة الطالب</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+</head>
 <body class="bg-light">
 <nav class="navbar navbar-dark bg-success">
-  <div class="container-fluid"><span class="navbar-brand">Étudiant — 
-    {{ level }}</span>
+  <div class="container-fluid">
+    <span class="navbar-brand">رقمك: {{ student.phone if student else '-' }}</span>
     <a class="btn btn-danger btn-sm" href="{{ url_for('logout') }}">تسجيل الخروج</a>
   </div>
 </nav>
+
 <div class="container py-4">
-  {% with msgs=get_flashed_messages(with_categories=true) %}{% for c,m in msgs %}
-  <div class="alert alert-{{c}}">{{m}}</div>{% endfor %}{% endwith %}
+  {% with msgs=get_flashed_messages(with_categories=true) %}
+    {% for c,m in msgs %}
+      <div class="alert alert-{{c}}">{{m}}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <ul class="nav nav-pills mb-3">
+    <li class="nav-item">
+      <a class="nav-link {% if not request.args.get('subject') %}active{% endif %}"
+         href="{{ url_for('student_dashboard') }}">الكل</a>
+    </li>
+    {% for item in subjects %}
+      <li class="nav-item">
+        <a class="nav-link {% if request.args.get('subject') == item.subject %}active{% endif %}"
+           href="{{ url_for('student_dashboard', subject=item.subject) }}">{{ item.subject }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+
   {% if lessons %}
     {% for l in lessons %}
-      <div class="card mb-3"><div class="card-body">
-        <b>{{ l.subject }}</b> — {{ l.chapter_title }}
-        {% if l.video_file %}
-          <video controls class="w-100 mt-2">
-            <source src="{{ url_for('static', filename='uploads/videos/' + (l.video_file or '')) }}" type="video/mp4">
-          </video>
-        {% endif %}
-        {% if l.pdf_file %}
-          <a class="btn btn-outline-primary btn-sm mt-2" target="_blank"
-             href="{{ url_for('static', filename='uploads/pdfs/' + (l.pdf_file or '')) }}">تحميل / فتح</a>
-        {% endif %}
-      </div></div>
+      <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <span class="badge bg-info text-dark">{{ l.subject }}</span>
+          </div>
+          <h6 class="mb-2">{{ l.chapter_title }}</h6>
+
+          {% if l.video_url %}
+            <div class="ratio ratio-16x9 mt-2">
+              <iframe
+                src="{% if 'drive.google.com' in l.video_url %}{{ l.video_url|replace('/view', '/preview') }}{% else %}{{ l.video_url }}{% endif %}"
+                allowfullscreen
+                referrerpolicy="no-referrer">
+              </iframe>
+            </div>
+          {% elif l.video_file %}
+            <video controls class="w-100 mt-2">
+              <source src="{{ url_for('static', filename='uploads/videos/' + (l.video_file or '')) }}">
+              متصفحك لا يدعم تشغيل الفيديو.
+            </video>
+          {% endif %}
+
+          {% if l.pdf_file %}
+            <a class="btn btn-outline-primary btn-sm mt-3" target="_blank"
+               href="{{ url_for('static', filename='uploads/pdfs/' + (l.pdf_file or '')) }}">
+              فتح PDF
+            </a>
+          {% endif %}
+
+          {% if l.uploaded_at %}
+            <div class="text-muted small mt-2">{{ l.uploaded_at }}</div>
+          {% endif %}
+        </div>
+      </div>
     {% endfor %}
   {% else %}
-    <div class="alert alert-info text-center">لاتوجد دروس متاحة الان</div>
+    <div class="alert alert-info text-center">لا توجد دروس متاحة الآن.</div>
   {% endif %}
 </div>
-</body></html>
+</body>
+</html>

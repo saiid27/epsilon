@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Epsilon Education</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2f5eea;
+      --primary-dark: #244bd0;
+      --ink: #1d2b53;
+      --muted: #7380a2;
+      --line: #e6ebf6;
+      --surface: #ffffff;
+      --bg: #f6f8fd;
+      --shadow: 0 22px 60px rgba(31, 50, 100, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes floatLogo {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    @keyframes softPulse {
+      0%, 100% { box-shadow: 0 14px 30px rgba(47, 94, 234, .24); }
+      50% { box-shadow: 0 18px 38px rgba(47, 94, 234, .34); }
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Tajawal", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 9% 12%, rgba(47, 94, 234, .12) 0 64px, transparent 65px),
+        radial-gradient(circle at 91% 4%, rgba(13, 159, 121, .12) 0 76px, transparent 77px),
+        linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+    }
+
+    .site {
+      width: min(960px, calc(100% - 24px));
+      min-height: 100vh;
+      margin: 0 auto;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .header {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(230, 235, 246, .9);
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      direction: ltr;
+      text-decoration: none;
+      color: var(--primary);
+    }
+
+    .logo img {
+      width: 42px;
+      height: 42px;
+      object-fit: contain;
+    }
+
+    .logo strong {
+      font: 600 24px/.9 "Cormorant Garamond", serif;
+      letter-spacing: .3px;
+    }
+
+    .login-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 112px;
+      height: 40px;
+      padding: 0 16px;
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 800;
+      box-shadow: 0 14px 30px rgba(47, 94, 234, .24);
+      animation: softPulse 3.2s ease-in-out infinite;
+      transition: transform .2s ease, background .2s ease;
+    }
+
+    .login-link:hover {
+      transform: translateY(-1px);
+      background: var(--primary-dark);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-inline-start: auto;
+      margin-inline-end: 4px;
+    }
+
+    .nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .nav a:hover { color: var(--primary); }
+
+    .content {
+      display: grid;
+      gap: 24px;
+      align-content: start;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+      gap: 30px;
+      align-items: center;
+      padding: 34px 0 28px;
+    }
+
+    .hero-copy {
+      animation: fadeUp .7s ease both;
+    }
+
+    .hero-copy h1 {
+      margin: 0 0 12px;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.12;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .hero-copy p {
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+      max-width: 540px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .primary-action,
+    .secondary-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .primary-action {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 16px 34px rgba(47, 94, 234, .25);
+      transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+
+    .secondary-action {
+      background: #fff;
+      color: var(--primary);
+      border: 1px solid var(--line);
+      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .primary-action:hover,
+    .secondary-action:hover {
+      transform: translateY(-2px);
+    }
+
+    .primary-action:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 20px 42px rgba(47, 94, 234, .32);
+    }
+
+    .secondary-action:hover {
+      border-color: rgba(47, 94, 234, .35);
+      box-shadow: 0 14px 28px rgba(31, 50, 100, .09);
+    }
+
+    .hero-panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      animation: fadeUp .7s ease .12s both;
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+
+    .hero-panel:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 28px 70px rgba(31, 50, 100, .16);
+    }
+
+    .hero-panel img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+      display: block;
+      filter: drop-shadow(0 14px 22px rgba(40, 76, 180, .14));
+      animation: floatLogo 4s ease-in-out infinite;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .stat {
+      min-height: 58px;
+      padding: 9px;
+      border-radius: 8px;
+      background: #f7f9ff;
+      border: 1px solid var(--line);
+      transition: transform .2s ease, background .2s ease;
+    }
+
+    .stat:hover {
+      transform: translateY(-2px);
+      background: #fff;
+    }
+
+    .stat b {
+      display: block;
+      color: var(--primary);
+      font-size: 16px;
+      line-height: 1.1;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .courses-section {
+      padding: 4px 0 30px;
+      animation: fadeUp .7s ease .22s both;
+    }
+
+    .section-title {
+      margin: 0 0 14px;
+      font-size: 24px;
+      line-height: 1.2;
+      font-weight: 800;
+    }
+
+    .course-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .course-card {
+      min-height: 108px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 10px 28px rgba(31, 50, 100, .07);
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity .45s ease, transform .45s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .course-card.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .course-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(47, 94, 234, .28);
+      box-shadow: 0 18px 42px rgba(31, 50, 100, .12);
+    }
+
+    .course-card b {
+      display: block;
+      color: var(--primary);
+      font-size: 20px;
+      line-height: 1.1;
+      direction: ltr;
+      text-align: right;
+    }
+
+    .course-card span {
+      display: block;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .footer {
+      padding: 14px 0 18px;
+      border-top: 1px solid rgba(230, 235, 246, .9);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: center;
+      direction: ltr;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 6px;
+      direction: rtl;
+    }
+
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .footer-links a:hover { color: var(--primary); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+      }
+
+      .course-card {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .site { width: min(100% - 18px, 420px); }
+      .header { min-height: 58px; }
+      .logo img { width: 36px; height: 36px; }
+      .logo strong { font-size: 20px; }
+      .login-link { min-width: 96px; height: 36px; padding: 0 12px; font-size: 13px; }
+      .nav {
+        order: 3;
+        width: 100%;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 0 0 8px;
+      }
+      .nav a { font-size: 12px; }
+      .header {
+        flex-wrap: wrap;
+        padding-top: 8px;
+      }
+      .hero {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 22px 0 18px;
+      }
+      .hero-copy h1 { font-size: 28px; }
+      .hero-copy p { font-size: 14px; margin-bottom: 16px; }
+      .actions { display: grid; grid-template-columns: 1fr; }
+      .hero-panel { padding: 12px; }
+      .hero-panel img {
+        width: min(240px, 78%);
+        margin: 0 auto;
+      }
+      .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .section-title { font-size: 21px; }
+      .course-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .course-card { min-height: 96px; padding: 12px; }
+      .footer { font-size: 12px; padding: 12px 0 14px; }
+    }
+
+    @media (max-width: 380px) {
+      .site { width: min(100% - 14px, 360px); }
+      .logo strong { font-size: 18px; }
+      .login-link { min-width: 88px; height: 34px; padding: 0 10px; font-size: 12px; }
+      .nav a { font-size: 11px; }
+      .hero-copy h1 { font-size: 24px; }
+      .primary-action,
+      .secondary-action {
+        min-height: 42px;
+        font-size: 13px;
+      }
+      .stat {
+        min-height: 52px;
+        padding: 7px;
+      }
+      .stat b { font-size: 14px; }
+      .stat span { font-size: 10px; }
+      .course-grid { gap: 8px; }
+      .course-card b { font-size: 17px; }
+      .course-card span { font-size: 11px; }
+      .footer {
+        font-size: 11px;
+        overflow-wrap: anywhere;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="site">
+    <header class="header">
+      <a class="logo" href="{{ url_for('home') }}" aria-label="Epsilon Education">
+        <img src="{{ url_for('static', filename='epsilon.svg') }}" alt="Epsilon">
+        <strong>EPSILON</strong>
+      </a>
+      <nav class="nav" aria-label="روابط الموقع">
+        <a href="{{ url_for('about') }}">من نحن</a>
+        <a href="{{ url_for('privacy') }}">سياسة الخصوصية</a>
+        <a href="{{ url_for('contact') }}">تواصل معنا</a>
+      </nav>
+      <a class="login-link" href="{{ url_for('login') }}">تسجيل الدخول</a>
+    </header>
+
+    <main class="content">
+      <section class="hero">
+        <div class="hero-copy">
+          <h1>تعلم بذكاء مع Epsilon Education</h1>
+          <p>منصة تعليمية تجمع الدروس، التمارين، والملفات في مكان واحد حتى يدرس الطالب بطريقة منظمة وواضحة.</p>
+          <div class="actions">
+            <a class="primary-action" href="{{ url_for('register') }}">إنشاء حساب</a>
+            <a class="secondary-action" href="{{ url_for('login') }}">لدي حساب بالفعل</a>
+          </div>
+        </div>
+
+        <div class="hero-panel" aria-label="Epsilon">
+          <img src="{{ url_for('static', filename='epsilon.svg') }}" alt="Epsilon Education">
+          <div class="stats">
+            <div class="stat">
+              <b>دروس</b>
+              <span>مرتبة حسب المستوى</span>
+            </div>
+            <div class="stat">
+              <b>ملفات</b>
+              <span>PDF وفيديوهات</span>
+            </div>
+            <div class="stat">
+              <b>متابعة</b>
+              <span>حساب لكل طالب</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="courses-section" aria-labelledby="courses-title">
+        <h2 class="section-title" id="courses-title">دوراتنا</h2>
+        <div class="course-grid">
+          <article class="course-card">
+            <b>MPI</b>
+            <span>رياضيات، فيزياء، وإعلامية مع تمارين منظمة.</span>
+          </article>
+          <article class="course-card">
+            <b>PC</b>
+            <span>دروس الفيزياء والكيمياء بطريقة مبسطة.</span>
+          </article>
+          <article class="course-card">
+            <b>BG</b>
+            <span>علوم الحياة والأرض مع ملخصات للمراجعة.</span>
+          </article>
+          <article class="course-card">
+            <b>BAC</b>
+            <span>تحضير ومراجعة لامتحان الباكالوريا.</span>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="{{ url_for('about') }}">من نحن</a>
+        <a href="{{ url_for('privacy') }}">سياسة الخصوصية</a>
+        <a href="{{ url_for('contact') }}">تواصل معنا</a>
+      </div>
+      epsilon @2026 | dev.medsaidmohameden@gmail.com
+    </footer>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const cards = document.querySelectorAll('.course-card');
+
+      if (!('IntersectionObserver' in window)) {
+        cards.forEach(card => card.classList.add('is-visible'));
+        return;
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.18 });
+
+      cards.forEach((card, index) => {
+        card.style.transitionDelay = `${index * 70}ms`;
+        observer.observe(card);
+      });
+    });
+  </script>
+</body>
+</html>

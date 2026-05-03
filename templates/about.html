@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>من نحن | Epsilon Education</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; min-height: 100vh; font-family: "Tajawal", sans-serif; color: #1d2b53; background: #f6f8fd; }
+    .page { width: min(760px, calc(100% - 24px)); margin: 0 auto; padding: 24px 0; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; }
+    a { color: #2f5eea; text-decoration: none; font-weight: 800; }
+    .card { background: #fff; border: 1px solid #e6ebf6; border-radius: 8px; padding: 22px; box-shadow: 0 18px 42px rgba(31, 50, 100, .08); }
+    h1 { margin: 0 0 12px; font-size: 28px; }
+    p { margin: 0 0 12px; color: #7380a2; font-size: 16px; line-height: 1.8; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="top">
+      <a href="{{ url_for('home') }}">Epsilon Education</a>
+      <a href="{{ url_for('login') }}">تسجيل الدخول</a>
+    </div>
+    <section class="card">
+      <h1>من نحن</h1>
+      <p>Epsilon Education منصة تعليمية تهدف إلى تنظيم تجربة التعلم للطلاب من خلال الدروس، الفيديوهات، والملفات التعليمية في مكان واحد.</p>
+      <p>نركز على تقديم محتوى واضح ومناسب للمستويات الدراسية، مع متابعة بسيطة تساعد الطالب على الوصول إلى مواده بسرعة.</p>
+    </section>
+  </main>
+</body>
+</html>

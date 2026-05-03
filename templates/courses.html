@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>اختر دورتك</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #2457e6;
+      --ink: #1d2b53;
+      --muted: #7380a2;
+      --line: #e6ebf6;
+      --bg: #f6f8fd;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Tajawal", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    .phone {
+      width: min(100%, 430px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 12px 10px 78px;
+      background:
+        radial-gradient(circle at 12% 2%, #e6ebf7 0 13px, transparent 14px),
+        radial-gradient(circle at 92% 18%, #e9edf8 0 42px, transparent 43px),
+        var(--bg);
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 32px 1fr 32px;
+      align-items: center;
+      margin-bottom: 12px;
+      direction: ltr;
+    }
+
+    .icon-button {
+      width: 32px;
+      height: 32px;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 24px;
+      text-decoration: none;
+      display: grid;
+      place-items: center;
+    }
+
+    .title {
+      text-align: center;
+      direction: rtl;
+    }
+
+    .title h1 {
+      margin: 0 0 2px;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .title p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .section-label {
+      margin: 0 4px 8px;
+      font-weight: 800;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .course {
+      min-height: 132px;
+      padding: 10px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 8px 22px rgba(31, 50, 100, .06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .course::after {
+      content: "";
+      position: absolute;
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      left: -20px;
+      top: 28px;
+      background: var(--tint);
+    }
+
+    .ribbon {
+      position: absolute;
+      left: 14px;
+      top: 0;
+      width: 14px;
+      height: 24px;
+      background: var(--accent);
+      border-radius: 0 0 7px 7px;
+      z-index: 1;
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr 58px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .course h2 {
+      margin: 0;
+      color: var(--accent);
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 800;
+      direction: ltr;
+      text-align: right;
+    }
+
+    .course strong {
+      display: block;
+      margin: 5px 0 3px;
+      color: var(--ink);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .course p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.45;
+    }
+
+    .art {
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      background: var(--tint);
+      font-size: 34px;
+      box-shadow: inset 0 -8px 18px rgba(255, 255, 255, .55);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      height: 18px;
+      border-radius: 8px;
+      background: var(--tint);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .subscribe {
+      position: relative;
+      z-index: 2;
+      width: 84px;
+      height: 26px;
+      margin-top: 9px;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--accent);
+      font: 800 10px "Tajawal", sans-serif;
+      cursor: pointer;
+    }
+
+    .subscribe span {
+      margin-inline-start: 6px;
+      font-size: 12px;
+    }
+
+    .blue { --accent: #2457e6; --tint: #e9efff; }
+    .green { --accent: #0d9f79; --tint: #e4f8f1; }
+    .purple { --accent: #7b4fe1; --tint: #f0eaff; }
+    .orange { --accent: #ef7d24; --tint: #fff0e4; }
+    .cyan { --accent: #1199ad; --tint: #e6f8fb; }
+    .pink { --accent: #df4984; --tint: #ffeaf3; }
+    .indigo { --accent: #386be8; --tint: #eaf0ff; }
+
+    .wide-card {
+      margin-top: 9px;
+      min-height: 102px;
+      display: grid;
+      grid-template-columns: 1fr 136px;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 8px 22px rgba(31, 50, 100, .06);
+      overflow: hidden;
+    }
+
+    .wide-card h3 {
+      margin: 0 0 6px;
+      color: var(--blue);
+      font-size: 16px;
+    }
+
+    .wide-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .wide-card img {
+      width: 142px;
+      height: 92px;
+      object-fit: contain;
+    }
+
+    .notice {
+      margin: 10px 4px 0;
+      padding: 9px 12px;
+      border-radius: 14px;
+      background: #eef4ff;
+      color: #506083;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .alert {
+      margin: 0 0 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #fff1f3;
+      color: #b13f52;
+      border: 1px solid #f4c5cd;
+      font-size: 13px;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+      width: min(100%, 430px);
+      height: 64px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      align-items: center;
+      background: rgba(255, 255, 255, .96);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -12px 30px rgba(31, 50, 100, .08);
+    }
+
+    .nav-item {
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      color: #7e89a7;
+      font-size: 10px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .nav-item b {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .nav-item.active {
+      color: var(--blue);
+    }
+  </style>
+</head>
+<body>
+  <main class="phone">
+    <header class="topbar">
+      <a class="icon-button" href="{{ url_for('register') }}">←</a>
+      <div class="title">
+        <h1>اختر دورتك</h1>
+        <p>حدد الدورة التي تريد التسجيل فيها، ثم تابع خطوات الاشتراك.</p>
+      </div>
+      <button class="icon-button" type="button" aria-label="بحث">⌕</button>
+    </header>
+
+    <p class="section-label">الدورات المتاحة</p>
+
+    {% with msgs=get_flashed_messages(with_categories=true) %}
+      {% for c,m in msgs %}
+        <div class="alert">{{m}}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <section class="grid">
+      {% for course in courses %}
+        <article class="course {{ course.theme }}">
+          <div class="ribbon"></div>
+          <div class="content">
+            <div>
+              {% if course.badge %}
+                <span class="badge">{{ course.badge }}</span>
+              {% endif %}
+              <h2>{{ course.title }}</h2>
+              <strong>{{ course.subtitle }}</strong>
+              <p>{{ course.description }}</p>
+            </div>
+            <div class="art">{{ course.icon }}</div>
+          </div>
+          <form method="POST">
+            <input type="hidden" name="course" value="{{ course.code }}">
+            <button class="subscribe" type="submit">اشترك الآن <span>+</span></button>
+          </form>
+        </article>
+      {% endfor %}
+    </section>
+
+    <section class="wide-card">
+      <div>
+        <h3>تعلم مع Epsilon</h3>
+        <p>دروس منظمة، اختبارات، وملخصات تساعدك على التقدم خطوة بخطوة.</p>
+      </div>
+      <img src="{{ url_for('static', filename='epsilon.svg') }}" alt="Epsilon">
+    </section>
+
+    <p class="notice">اختر الدورة المناسبة لك. يمكنك تعديل تفاصيل الدفع والاشتراك في الخطوة التالية.</p>
+  </main>
+
+  <nav class="bottom-nav" aria-label="القائمة">
+    <a class="nav-item active" href="#"><b>👤</b><span>حسابي</span></a>
+    <a class="nav-item" href="#"><b>▣</b><span>المكتبة</span></a>
+    <a class="nav-item" href="#"><b>⌂</b><span>الرئيسية</span></a>
+    <a class="nav-item" href="#"><b>✉</b><span>الرسائل</span></a>
+    <a class="nav-item" href="#"><b>⋯</b><span>المزيد</span></a>
+  </nav>
+</body>
+</html>

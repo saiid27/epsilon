@@ -1,50 +1,221 @@
-<!DOCTYPE html><html lang="fr"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Inscription étudiant</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"></head>
-<style>
-  h4{
-    color: aqua;
-  }
-  img{
-     width: 300px;
-        height: 100px;
-        padding: 8px;
-  }
-</style>
-<body class="bg-light">
-<div class="container py-5">
-  <div class="col-12 col-md-7 col-lg-5 mx-auto">
-    <div class="card shadow p-4">
-      <h4 class="text-center mb-3">اضافة معلومات الطالب</h4>
-      {% with msgs=get_flashed_messages(with_categories=true) %}{% for c,m in msgs %}
-      <div class="alert alert-{{c}}">{{m}}</div>{% endfor %}{% endwith %}
-      <form method="POST" enctype="multipart/form-data">
-        <div class="mb-3"><label class="form-label">اسم المستخدم</label>
-          <input name="username" class="form-control" required></div>
-        <div class="mb-3"><label class="form-label">رقم الواتساب  </label>
-          <input name="phone" class="form-control" required pattern="^[0-9+ ]{6,}$" placeholder="+222..."></div>
-        <div class="mb-3"><label class="form-label">  كلمة المرور</label>
-          <input type="password" name="password" class="form-control" required></div>
-        <div class="mb-3"><label class="form-label">القسم</label>
-          <select name="level" class="form-select" required>
-            <option value="4as">4AS</option><option value="7D">7D</option><option value="7O">7O</option>
-          </select>
-        </div>
-       
-        <br>
-        <h4>ارسل المبلغ الي الرقم التالي</h4>
-         <img src="{{ url_for('static', filename='bankili.jpg') }}" alt="temeyouzi" onerror="this.style.display='none';this.parentNode.innerHTML='temeyouzi'">
-        <br>
-        <div class="mb-3"><label class="form-label"> رفع صورة لاثبات الدفع</label>
-          <input type="file" name="payment_image" class="form-control" accept=".jpg,.jpeg,.png,.webp,.pdf" required>
-        </div>
-        <button class="btn btn-success w-100"> مواصلة التسجيل  </button>
-      </form>
-      <div class="text-center mt-3">
-        <a href="{{ url_for('home') }}">عودة لتسجيل الدخول</a>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>إنشاء حساب</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #2f5eea;
+      --blue-dark: #244bd0;
+      --text: #344064;
+      --muted: #7d86a5;
+      --line: #e6ebfb;
+      --soft: #f5f7ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Tajawal", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 8% 12%, #e4e9fb 0 44px, transparent 45px),
+        radial-gradient(circle at 88% 0%, #e4e9fb 0 68px, transparent 69px),
+        linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+    }
+
+    .page {
+      width: min(100%, 430px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 18px 18px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dots {
+      position: absolute;
+      top: 10px;
+      right: 78px;
+      width: 92px;
+      height: 92px;
+      background-image: radial-gradient(rgba(47, 94, 234, .22) 2px, transparent 2px);
+      background-size: 18px 18px;
+    }
+
+    .hero {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding-top: 16px;
+    }
+
+    .hero img {
+      width: min(330px, 94%);
+      max-height: 205px;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 18px rgba(40, 76, 180, .18));
+    }
+
+    .brand {
+      margin-top: -18px;
+      direction: ltr;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .mark {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      border: 6px solid var(--blue);
+      display: grid;
+      place-items: center;
+      color: var(--blue);
+      font-family: "Cormorant Garamond", serif;
+      font-size: 43px;
+      background: rgba(255, 255, 255, .9);
+    }
+
+    .brand h1 {
+      margin: 0;
+      color: var(--blue);
+      font: 600 38px/.9 "Cormorant Garamond", serif;
+      letter-spacing: .6px;
+    }
+
+    .subtitle {
+      margin: 16px 0 22px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: rgba(255, 255, 255, .88);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 18px;
+      box-shadow: 0 24px 70px rgba(54, 83, 168, .13);
+      backdrop-filter: blur(10px);
+    }
+
+    .field { margin-bottom: 13px; }
+
+    .field label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .field input {
+      width: 100%;
+      height: 58px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      padding: 0 16px;
+      font: 500 16px "Tajawal", sans-serif;
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .field input:focus {
+      border-color: #b8c7ff;
+      box-shadow: 0 0 0 5px rgba(47, 94, 234, .1);
+    }
+
+    .alert {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #fff2f3;
+      color: #b13f52;
+      border: 1px solid #f4c5cd;
+      font-size: 14px;
+    }
+
+    .button {
+      width: 100%;
+      height: 58px;
+      border: 0;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+      color: #fff;
+      font: 800 17px "Tajawal", sans-serif;
+      box-shadow: 0 16px 34px rgba(47, 94, 234, .28);
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .back {
+      display: block;
+      margin-top: 16px;
+      text-align: center;
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="dots"></div>
+
+    <section class="hero">
+      <img src="{{ url_for('static', filename='epsilon.svg') }}" alt="Epsilon">
+      <div class="brand">
+        <div class="mark">E</div>
+        <h1>EPSILON</h1>
       </div>
-    </div>
-  </div>
-</div>
-</body></html>
+      <p class="subtitle">تعلم بذكاء .. تعلم بسهولة</p>
+    </section>
+
+    <section class="card">
+      {% with msgs=get_flashed_messages(with_categories=true) %}
+        {% for c,m in msgs %}
+          <div class="alert">{{m}}</div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST">
+        <div class="field">
+          <label for="username">الاسم</label>
+          <input id="username" name="username" required autocomplete="name" placeholder="اكتب اسمك">
+        </div>
+
+        <div class="field">
+          <label for="phone">رقم الواتساب</label>
+          <input id="phone" name="phone" required inputmode="tel" pattern="^[0-9+ ]{6,}$" placeholder="+222...">
+        </div>
+
+        <div class="field">
+          <label for="password">الكود</label>
+          <input id="password" type="password" name="password" required minlength="4" autocomplete="new-password" placeholder="اكتب الكود">
+        </div>
+
+        <div class="field">
+          <label for="confirm_password">تأكيد الكود</label>
+          <input id="confirm_password" type="password" name="confirm_password" required minlength="4" autocomplete="new-password" placeholder="أعد كتابة الكود">
+        </div>
+
+        <button class="button" type="submit">ابدأ الآن</button>
+      </form>
+
+      <a class="back" href="{{ url_for('login') }}">لدي حساب بالفعل</a>
+    </section>
+  </main>
+</body>
+</html>

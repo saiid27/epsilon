@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>العروض التعليمية</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #2f5eea;
+      --blue-dark: #244bd0;
+      --text: #344064;
+      --muted: #7d86a5;
+      --soft: #eef3ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Tajawal", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 8% 10%, #e7ecfb 0 38px, transparent 39px),
+        radial-gradient(circle at 88% 0%, #e7ecfb 0 64px, transparent 65px),
+        linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+    }
+
+    .page {
+      width: min(100%, 430px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 18px 22px 28px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .skip {
+      align-self: flex-start;
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .dots {
+      position: absolute;
+      top: 14px;
+      right: 94px;
+      width: 86px;
+      height: 86px;
+      background-image: radial-gradient(rgba(47, 94, 234, .18) 2px, transparent 2px);
+      background-size: 17px 17px;
+    }
+
+    .slides {
+      flex: 1;
+      display: grid;
+      place-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .slide {
+      display: none;
+      text-align: center;
+      animation: rise .35s ease both;
+    }
+
+    .slide.active { display: block; }
+
+    .visual {
+      width: 210px;
+      height: 210px;
+      margin: 0 auto 26px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #f0f4ff, #ffffff);
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+
+    .box {
+      width: 116px;
+      height: 92px;
+      border-radius: 18px 18px 22px 22px;
+      background: linear-gradient(145deg, #2f66ee, #1744cc);
+      box-shadow: 0 18px 32px rgba(47, 94, 234, .26);
+      position: relative;
+    }
+
+    .cap {
+      width: 112px;
+      height: 42px;
+      background: #194fda;
+      transform: skewY(-12deg) rotate(-5deg);
+      border-radius: 10px;
+      position: absolute;
+      top: -28px;
+      right: 4px;
+    }
+
+    .play {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #fff;
+      color: var(--blue);
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+      position: absolute;
+      left: -16px;
+      bottom: 18px;
+      box-shadow: 0 10px 24px rgba(30, 66, 160, .18);
+    }
+
+    .bubble {
+      position: absolute;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #edf3ff;
+      color: var(--blue);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      box-shadow: 0 10px 22px rgba(47, 94, 234, .12);
+    }
+
+    .bubble.one { top: 18px; right: 40px; }
+    .bubble.two { top: 72px; left: 12px; }
+    .bubble.three { bottom: 50px; right: 12px; }
+
+    .slide h2 {
+      margin: 0 0 8px;
+      color: var(--blue);
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .slide p {
+      margin: 0 auto;
+      width: min(250px, 100%);
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.8;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .arrow {
+      width: 46px;
+      height: 46px;
+      border: 0;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .prev {
+      background: #edf1fa;
+      color: #8992ac;
+    }
+
+    .next {
+      background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+      color: #fff;
+      box-shadow: 0 12px 26px rgba(47, 94, 234, .28);
+    }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #d8def0;
+    }
+
+    .dot.active {
+      width: 9px;
+      height: 9px;
+      background: var(--blue);
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <a class="skip" href="{{ url_for('payment') }}">تخطي</a>
+    <div class="dots"></div>
+
+    <section class="slides">
+      <article class="slide active">
+        <div class="visual">
+          <div class="bubble one">🏆</div>
+          <div class="bubble two">▣</div>
+          <div class="bubble three">+</div>
+          <div class="box">
+            <div class="cap"></div>
+            <div class="play">▶</div>
+          </div>
+        </div>
+        <h2>محتوى تعليمي شامل</h2>
+        <p>دروس، اختبارات، ملخصات وأدوات ما تحتاجه في مكان واحد.</p>
+      </article>
+
+      <article class="slide">
+        <div class="visual">
+          <div class="bubble one">✓</div>
+          <div class="bubble two">★</div>
+          <div class="bubble three">↗</div>
+          <div class="box">
+            <div class="cap"></div>
+            <div class="play">▶</div>
+          </div>
+        </div>
+        <h2>تعلم بذكاء</h2>
+        <p>تابع الدروس حسب مستواك، وارجع إلى المحتوى في أي وقت.</p>
+      </article>
+
+      <article class="slide">
+        <div class="visual">
+          <div class="bubble one">📊</div>
+          <div class="bubble two">+</div>
+          <div class="bubble three">✓</div>
+          <div class="box">
+            <div class="cap"></div>
+            <div class="play">▶</div>
+          </div>
+        </div>
+        <h2>جاهز للبدء</h2>
+        <p>أكمل خطوة الدفع لتفعيل حسابك والوصول إلى المنصة.</p>
+      </article>
+    </section>
+
+    <section class="controls">
+      <button class="arrow prev" type="button" id="prevBtn">←</button>
+      <div class="pager" aria-label="مؤشر الصفحات">
+        <span class="dot active"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+      <button class="arrow next" type="button" id="nextBtn">→</button>
+    </section>
+  </main>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const dots = Array.from(document.querySelectorAll('.dot'));
+    const next = document.getElementById('nextBtn');
+    const prev = document.getElementById('prevBtn');
+    let current = 0;
+
+    function render() {
+      slides.forEach((slide, index) => slide.classList.toggle('active', index === current));
+      dots.forEach((dot, index) => dot.classList.toggle('active', index === current));
+    }
+
+    next.addEventListener('click', () => {
+      if (current === slides.length - 1) {
+        window.location.href = "{{ url_for('payment') }}";
+        return;
+      }
+      current += 1;
+      render();
+    });
+
+    prev.addEventListener('click', () => {
+      current = Math.max(0, current - 1);
+      render();
+    });
+  </script>
+</body>
+</html>

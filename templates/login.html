@@ -1,99 +1,472 @@
-<!DOCTYPE html><html lang="fr"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Connexion</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<style>
-h5{
-  color: black;
-}
-h4{
-color: rgb(96, 215, 236);  
-}
-.logo-img {
-    width: 85px;
-    height: 85px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid rgba(255, 255, 255, 0.4);
-    padding: 10px;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    transition: transform 0.3s ease;
-}
- .logo-img {
-        width: 65px;
-        height: 65px;
-        padding: 8px;
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Epsilon Education | تسجيل الدخول</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root {
+      --primary: #6984d6;
+      --primary-dark: #5470c5;
+      --soft: #eef2ff;
+      --soft-2: #f7f9ff;
+      --text: #5f6d99;
+      --text-muted: #9098b1;
+      --line: #e4e8f5;
+      --shadow: 0 24px 70px rgba(100, 126, 201, 0.16);
     }
-     .logo-img {
-        width: 75px;
-        height: 75px;
-    }
-    
-.logo-img:hover {
-    transform: scale(1.05);
-}
 
-.logo-img img {
-    max-width: 90%;
-    max-height: 90%;
-    object-fit: contain;
-}
-footer{
-  color: #52bfe0;
-  text-align: center;
-}
-</style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Tajawal", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(105, 132, 214, 0.14) 0, rgba(105, 132, 214, 0.14) 110px, transparent 111px),
+        radial-gradient(circle at top right, rgba(105, 132, 214, 0.1) 0, rgba(105, 132, 214, 0.1) 92px, transparent 93px),
+        radial-gradient(circle at 12% 72%, rgba(105, 132, 214, 0.08) 0, rgba(105, 132, 214, 0.08) 80px, transparent 81px),
+        linear-gradient(180deg, #fcfdff 0%, #f6f8ff 100%);
+      color: var(--text);
+    }
+
+    .page {
+      width: min(100%, 390px);
+      margin: 0 auto;
+      padding: 0;
+      position: relative;
+      overflow: hidden;
+      min-height: 100vh;
+    }
+
+    .blob {
+      position: absolute;
+      background: rgba(105, 132, 214, 0.1);
+      filter: blur(0.2px);
+      z-index: 0;
+    }
+
+    .blob-left {
+      width: 170px;
+      height: 210px;
+      top: -34px;
+      left: -72px;
+      border-radius: 45% 55% 50% 50%;
+    }
+
+    .blob-right {
+      width: 150px;
+      height: 200px;
+      top: 64px;
+      right: -72px;
+      border-radius: 52% 48% 46% 54%;
+    }
+
+    .dots,
+    .dots-bottom {
+      position: absolute;
+      width: 76px;
+      height: 76px;
+      background-image: radial-gradient(rgba(105, 132, 214, 0.32) 2px, transparent 2px);
+      background-size: 16px 16px;
+      z-index: 0;
+      opacity: 0.9;
+    }
+
+    .dots {
+      top: 14px;
+      right: 42px;
+    }
+
+    .dots-bottom {
+      top: 252px;
+      left: 18px;
+    }
+
+    .screen {
+      position: relative;
+      z-index: 1;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 8px 12px 16px;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 4px 0 0;
+    }
+
+    .hero-art {
+      display: flex;
+      justify-content: center;
+      align-items: end;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .hero-art img.student-shot {
+      width: min(230px, 76%);
+      max-height: 138px;
+      object-fit: contain;
+      filter: drop-shadow(0 8px 18px rgba(61, 85, 155, 0.16));
+    }
+
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin: -16px 0 10px;
+      direction: ltr;
+    }
+
+    .brand-mark {
+      width: 70px;
+      height: 70px;
+      border: 7px solid var(--primary);
+      border-radius: 50%;
+      color: var(--primary);
+      display: grid;
+      place-items: center;
+      font-family: "Cormorant Garamond", serif;
+      font-size: 48px;
+      line-height: 1;
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .brand-copy h1 {
+      margin: 0;
+      font-family: "Cormorant Garamond", serif;
+      font-size: 38px;
+      line-height: 0.92;
+      color: var(--primary);
+      letter-spacing: 0.5px;
+    }
+
+    .brand-copy span {
+      display: block;
+      margin-top: 2px;
+      color: var(--primary);
+      font-size: 15px;
+      font-family: "Cormorant Garamond", serif;
+    }
+
+    .welcome {
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    .welcome h2 {
+      margin: 0 0 2px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .welcome .english {
+      margin: 0;
+      font-size: 23px;
+      line-height: 1.08;
+      color: var(--primary);
+      font-family: "Cormorant Garamond", serif;
+      direction: ltr;
+    }
+
+    .switches {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      margin: 10px 0 10px;
+      border: 1px solid #d8dff4;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #f6f8ff;
+    }
+
+    .switch-link,
+    .switch-active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+    }
+
+    .switch-link {
+      color: var(--primary);
+      background: transparent;
+    }
+
+    .switch-active {
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      box-shadow: inset 0 -6px 18px rgba(44, 69, 145, 0.18);
+    }
+
+    .flash-stack {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .flash {
+      padding: 8px 11px;
+      border-radius: 10px;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      box-shadow: 0 12px 30px rgba(116, 136, 195, 0.08);
+    }
+
+    .flash-danger { border-color: #f3c0ca; color: #b5475b; background: #fff6f8; }
+    .flash-warning { border-color: #f0dd9d; color: #977534; background: #fffcef; }
+    .flash-success { border-color: #bfe3cf; color: #2f7a52; background: #f4fff8; }
+    .flash-secondary { border-color: #d5daf0; color: #5e6d97; background: #f8faff; }
+
+    .field {
+      position: relative;
+      margin-bottom: 9px;
+    }
+
+    .field input {
+      width: 100%;
+      height: 52px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      padding: 0 44px 0 42px;
+      font-size: 14px;
+      font-family: "Tajawal", sans-serif;
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+
+    .field input::placeholder {
+      color: #aab1c6;
+    }
+
+    .field input:focus {
+      border-color: #b8c5ef;
+      box-shadow: 0 0 0 5px rgba(105, 132, 214, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .field .right-icon,
+    .field .left-action {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #7b89b1;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .field .right-icon { right: 13px; }
+    .field .left-action {
+      left: 12px;
+      background: transparent;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .form-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 2px 2px 10px;
+      font-size: 12px;
+    }
+
+    .remember {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text);
+    }
+
+    .remember input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+      border-radius: 8px;
+    }
+
+    .forgot-link {
+      text-decoration: none;
+      color: var(--primary);
+    }
+
+    .login-button {
+      width: 100%;
+      height: 50px;
+      border: 0;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #fff;
+      font-family: "Tajawal", sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      box-shadow: 0 18px 40px rgba(89, 113, 190, 0.3);
+      cursor: pointer;
+      transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+    }
+
+    .login-button:hover { transform: translateY(-1px); }
+    .login-button:disabled { opacity: .8; cursor: wait; }
+
+    .loading-indicator {
+      display: none;
+      margin-inline-start: 10px;
+    }
+
+    @media (max-height: 680px) {
+      .hero-art img.student-shot { width: min(190px, 66%); max-height: 108px; }
+      .welcome h2 { font-size: 16px; }
+      .welcome .english { font-size: 20px; }
+      .switch-link, .switch-active { min-height: 40px; }
+      .field input { height: 48px; }
+      .login-button { height: 46px; }
+    }
+
+    @media (max-width: 360px) {
+      .page { width: min(100%, 350px); }
+      .screen { padding: 6px 9px 14px; }
+      .hero-art img.student-shot { width: min(180px, 66%); max-height: 104px; }
+      .brand-mark { width: 58px; height: 58px; font-size: 40px; border-width: 6px; }
+      .brand-copy h1 { font-size: 31px; }
+      .brand-copy span { font-size: 13px; }
+      .welcome h2 { font-size: 15px; }
+      .welcome .english { font-size: 19px; }
+      .switch-link, .switch-active { font-size: 12px; min-height: 38px; gap: 6px; }
+      .field input { height: 46px; font-size: 13px; padding: 0 40px 0 38px; }
+      .field .right-icon, .field .left-action { font-size: 18px; }
+      .form-meta { font-size: 11px; gap: 8px; }
+      .login-button { height: 44px; font-size: 14px; }
+    }
+  </style>
 </head>
-<body class="bg-light">
-   
-<div class="container py-5">
-                       
-  <div class="col-12 col-md-6 col-lg-4 mx-auto">
-    <div class="card shadow p-4">
-                    <div class="logo-img">
-                                <!-- Utilisez cette balise img pour votre logo ISME -->
-                                <img src="{{ url_for('static', filename='logo temeyouzi.jpg') }}" alt="temeyouzi" onerror="this.style.display='none';this.parentNode.innerHTML='temeyouzi'">
-                            </div>
-      <h4 class="text-center mb-3">تسجيل الدخول</h4>
-      {% with msgs=get_flashed_messages(with_categories=true) %}{% for c,m in msgs %}
-      <div class="alert alert-{{c}}">{{m}}</div>{% endfor %}{% endwith %}
+<body>
+  <div class="page">
+    <div class="blob blob-left"></div>
+    <div class="blob blob-right"></div>
+    <div class="dots"></div>
+    <div class="dots-bottom"></div>
 
-      <form method="POST" action="{{ url_for('login') }}">
-        <div class="mb-3"><label class="form-label">اسم المستخدم</label>
-          <input name="username" class="form-control" placeholder="اسم المستخدم" required></div>
-        <div class="mb-3"><label class="form-label">كلمة المرور</label>
-           <input type="password" name="password" id="password" class="form-control" 
-                                           required autocomplete="current-password"
-                                           placeholder="ادخل كلمة المرور">
-                                    <button type="button" class="password-toggle" id="togglePassword" aria-label="Afficher/Masquer le mot de passe">
-                                        <i class="bi bi-eye" id="eye-icon"></i>
-                                    </button>
-          <!-- Option Se souvenir de moi -->
-                            <div class="form-check mb-4">
-                                <input class="form-check-input" type="checkbox" id="rememberMe" name="remember">
-                                <label class="form-check-label text-light opacity-75" for="rememberMe">
-                                  <h5>
-                               تذكرني
-                                    </h5>
-                                </label>
-                            </div>
+    <main class="screen">
+      <section class="hero">
+        <div class="hero-art">
+          <img class="student-shot" src="{{ url_for('static', filename='epsilon.svg') }}" alt="طلاب Epsilon">
+        </div>
 
-        <button class="btn btn-primary w-100">دخول</button>
-      </form>
-      <div class="d-flex justify-content-between mt-3">
-        <a href="{{ url_for('register') }}">انشاء حساب</a>
-        <a href="{{ url_for('forgot') }}">نسيت كلمة المرور?</a>
 
-        
+        <div class="welcome">
+          <h2>مرحباً بك في</h2>
+          <p class="english">Epsilon Education</p>
+        </div>
+      </section>
+
+      <div class="switches">
+        <div class="switch-active">
+          <i class="bi bi-person"></i>
+          <span>تسجيل الدخول</span>
+        </div>
+        <a class="switch-link" href="{{ url_for('register') }}">
+          <i class="bi bi-person-plus"></i>
+          <span>إنشاء حساب</span>
+        </a>
       </div>
-    </div>
+
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% if msgs %}
+          <div class="flash-stack">
+            {% for c, m in msgs %}
+              <div class="flash flash-{{ c }}">{{ m }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('login') }}" id="loginForm">
+        <div class="field">
+          <i class="bi bi-envelope right-icon"></i>
+          <input
+            type="text"
+            name="username"
+            id="username"
+            required
+            autocomplete="username"
+            autofocus
+            placeholder="اسم المستخدم أو رقم الهاتف">
+        </div>
+
+        <div class="field">
+          <i class="bi bi-lock right-icon"></i>
+          <input
+            type="password"
+            name="password"
+            id="password"
+            required
+            autocomplete="current-password"
+            placeholder="كلمة المرور">
+          <button type="button" class="left-action" id="togglePassword" aria-label="إظهار أو إخفاء كلمة المرور">
+            <i class="bi bi-eye-slash" id="eye-icon"></i>
+          </button>
+        </div>
+
+        <div class="form-meta">
+          <a href="{{ url_for('forgot') }}" class="forgot-link">نسيت كلمة المرور؟</a>
+          <label class="remember" for="rememberMe">
+            <span>تذكرني</span>
+            <input type="checkbox" id="rememberMe" name="remember">
+          </label>
+        </div>
+
+        <button type="submit" class="login-button" id="loginButton">
+          تسجيل الدخول
+          <span class="spinner-border spinner-border-sm loading-indicator" id="loadingIndicator" role="status" aria-hidden="true"></span>
+        </button>
+      </form>
+
+    </main>
   </div>
-</div>
-<br>
-<footer>منصة تميزى @2025</footer>
-</body></html>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const toggle = document.getElementById('togglePassword');
+      const password = document.getElementById('password');
+      const eye = document.getElementById('eye-icon');
+      const form = document.getElementById('loginForm');
+      const button = document.getElementById('loginButton');
+      const spinner = document.getElementById('loadingIndicator');
+
+      if (toggle && password && eye) {
+        toggle.addEventListener('click', function () {
+          const showing = password.type === 'text';
+          password.type = showing ? 'password' : 'text';
+          eye.className = showing ? 'bi bi-eye-slash' : 'bi bi-eye';
+        });
+      }
+
+      if (form && button && spinner) {
+        form.addEventListener('submit', function () {
+          button.disabled = true;
+          spinner.style.display = 'inline-block';
+        });
+      }
+    });
+  </script>
+</body>
+</html>
