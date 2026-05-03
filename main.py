@@ -20,7 +20,7 @@ except Exception:
 BASE = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, template_folder=os.path.join(BASE, "templates"),
              static_folder=os.path.join(BASE, "static"))
-app.secret_key = "change-this-secret"
+app.secret_key = os.getenv("SECRET_KEY", "change-this-secret")
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100 MB
 
 # Dossiers dâ€™upload
@@ -274,6 +274,36 @@ COURSES = [
 def ensure_courses_table():
     with db() as conn:
         cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) NOT NULL UNIQUE,
+                phone VARCHAR(30) NOT NULL UNIQUE,
+                password VARCHAR(64) NOT NULL,
+                role VARCHAR(20) NOT NULL DEFAULT 'student',
+                level VARCHAR(40),
+                subject VARCHAR(80),
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                phone_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                payment_image VARCHAR(255),
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS verification_codes (
+                id SERIAL PRIMARY KEY,
+                phone VARCHAR(30) NOT NULL,
+                code VARCHAR(10) NOT NULL,
+                purpose VARCHAR(30) NOT NULL,
+                used BOOLEAN NOT NULL DEFAULT FALSE,
+                expires_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_verification_codes_lookup
+            ON verification_codes (phone, purpose, code, used, expires_at)
+        """)
         cur.execute("SELECT to_regclass('public.courses')")
         table_exists = cur.fetchone()[0] is not None
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS subject VARCHAR(80)")
@@ -301,6 +331,27 @@ def ensure_courses_table():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE (course_code, subject)
             )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS lessons (
+                id SERIAL PRIMARY KEY,
+                subject VARCHAR(80) NOT NULL,
+                chapter_title VARCHAR(255) NOT NULL,
+                level VARCHAR(40) NOT NULL,
+                video_file VARCHAR(255),
+                pdf_file VARCHAR(255),
+                video_url TEXT,
+                uploaded_by INT REFERENCES users(id) ON DELETE SET NULL,
+                uploaded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_lessons_level_subject
+            ON lessons (level, subject, uploaded_at DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_lessons_uploaded_by
+            ON lessons (uploaded_by, uploaded_at DESC)
         """)
         if not table_exists:
             for index, course in enumerate(COURSES, start=1):
@@ -355,6 +406,15 @@ def fetch_course_subjects(course_code=None):
         rows = cur.fetchall()
         cur.close()
     return rows
+
+_schema_ready = False
+
+@app.before_request
+def ensure_schema_ready():
+    global _schema_ready
+    if not _schema_ready:
+        ensure_courses_table()
+        _schema_ready = True
 
 @app.route("/courses", methods=["GET","POST"])
 def courses():

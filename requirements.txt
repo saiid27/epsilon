@@ -2,3 +2,4 @@ Flask
 Werkzeug
 psycopg2-binary
 twilio
+gunicorn

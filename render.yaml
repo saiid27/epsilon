@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: epsilon-app
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        fromDatabase:
+          name: epsilon-db
+          property: connectionString
+
+databases:
+  - name: epsilon-db
+    plan: free
