@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-import os, random, time, sys, socket, hashlib
+import os, random, time, sys, socket, hashlib, re
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 from functools import wraps
@@ -59,6 +59,34 @@ def dict_cursor(conn):
 
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+def remove_upload(folder, filename):
+    if not filename:
+        return
+    path = os.path.abspath(os.path.join(folder, filename))
+    folder_abs = os.path.abspath(folder)
+    if os.path.commonpath([folder_abs, path]) != folder_abs:
+        return
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        print("Upload cleanup error:", e)
+
+def google_drive_preview_url(url):
+    if not url:
+        return ""
+    patterns = [
+        r"drive\.google\.com/file/d/([^/]+)",
+        r"drive\.google\.com/open\?id=([^&]+)",
+        r"drive\.google\.com/uc\?id=([^&]+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return f"https://drive.google.com/file/d/{match.group(1)}/preview"
+    return url
 
 # ===== SMS (Twilio ou mode DEV) =====
 TWILIO_SID   = os.getenv("TWILIO_ACCOUNT_SID")
@@ -138,7 +166,7 @@ def home():
         return redirect(url_for("admin_dashboard" if r=="admin" else
                                 "teacher_dashboard" if r=="teacher" else
                                 "student_dashboard"))
-    return render_template("home.html")
+    return render_template("home.html", free_pdfs=fetch_free_pdfs(active_only=True))
 
 @app.route("/about")
 def about():
@@ -346,12 +374,28 @@ def ensure_courses_table():
             )
         """)
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS free_pdfs (
+                id SERIAL PRIMARY KEY,
+                course_code VARCHAR(40) NOT NULL REFERENCES courses(code) ON DELETE CASCADE,
+                subject VARCHAR(80) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                drive_url TEXT NOT NULL,
+                sort_order INT DEFAULT 0,
+                active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_lessons_level_subject
             ON lessons (level, subject, uploaded_at DESC)
         """)
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_lessons_uploaded_by
             ON lessons (uploaded_by, uploaded_at DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_free_pdfs_course_subject
+            ON free_pdfs (course_code, subject, sort_order ASC, id DESC)
         """)
         if not table_exists:
             for index, course in enumerate(COURSES, start=1):
@@ -407,6 +451,56 @@ def fetch_course_subjects(course_code=None):
         cur.close()
     return rows
 
+def fetch_free_pdfs(active_only=True, course_code=None, subject=None):
+    ensure_courses_table()
+    with db() as conn:
+        cur = dict_cursor(conn)
+        clauses = []
+        params = []
+        if active_only:
+            clauses.append("fp.active=TRUE")
+        if course_code:
+            clauses.append("fp.course_code=%s")
+            params.append(course_code)
+        if subject:
+            clauses.append("fp.subject=%s")
+            params.append(subject)
+        where = "WHERE " + " AND ".join(clauses) if clauses else ""
+        cur.execute(f"""
+            SELECT fp.id, fp.course_code, c.title AS course_title, fp.subject,
+                   fp.title, fp.drive_url, fp.sort_order, fp.active, fp.created_at
+            FROM free_pdfs fp
+            JOIN courses c ON c.code = fp.course_code
+            {where}
+            ORDER BY c.sort_order ASC, c.id ASC,
+                     fp.subject ASC, fp.sort_order ASC, fp.id DESC
+        """, params)
+        rows = cur.fetchall()
+        cur.close()
+
+    grouped = []
+    by_course = {}
+    by_subject = {}
+    for row in rows:
+        row["preview_url"] = google_drive_preview_url(row["drive_url"])
+        course = by_course.get(row["course_code"])
+        if not course:
+            course = {
+                "level": row["course_code"],
+                "title": row["course_title"],
+                "subjects": []
+            }
+            by_course[row["course_code"]] = course
+            grouped.append(course)
+        subject_key = (row["course_code"], row["subject"])
+        subject = by_subject.get(subject_key)
+        if not subject:
+            subject = {"name": row["subject"], "pdfs": []}
+            by_subject[subject_key] = subject
+            course["subjects"].append(subject)
+        subject["pdfs"].append(row)
+    return grouped
+
 _schema_ready = False
 
 @app.before_request
@@ -433,6 +527,30 @@ def courses():
         session["pending_registration"] = pending
         return redirect(url_for("onboarding"))
     return render_template("courses.html", courses=available_courses)
+
+@app.route("/archive")
+def archive():
+    courses = fetch_courses(active_only=True)
+    selected_level = request.args.get("level","").strip()
+    selected_subject = request.args.get("subject","").strip()
+    valid_levels = {course["code"] for course in courses}
+    if selected_level and selected_level not in valid_levels:
+        selected_level = ""
+        selected_subject = ""
+
+    subjects = fetch_course_subjects(selected_level) if selected_level else []
+    valid_subjects = {row["subject"] for row in subjects}
+    if selected_subject and selected_subject not in valid_subjects:
+        selected_subject = ""
+
+    free_pdfs = []
+    if selected_level and selected_subject:
+        free_pdfs = fetch_free_pdfs(active_only=True,
+                                    course_code=selected_level,
+                                    subject=selected_subject)
+    return render_template("archive.html", free_pdfs=free_pdfs, courses=courses,
+                           subjects=subjects, selected_level=selected_level,
+                           selected_subject=selected_subject)
 
 @app.route("/onboarding")
 def onboarding():
@@ -555,7 +673,9 @@ def admin_dashboard():
         users = cur.fetchall(); cur.close()
     courses = fetch_courses(active_only=False)
     course_subjects = fetch_course_subjects()
-    return render_template("admin.html", users=users, courses=courses, course_subjects=course_subjects)
+    free_pdfs = fetch_free_pdfs(active_only=False)
+    return render_template("admin.html", users=users, courses=courses,
+                           course_subjects=course_subjects, free_pdfs=free_pdfs)
 
 @app.route("/admin/activate/<int:uid>")
 @login_required("admin")
@@ -572,6 +692,50 @@ def delete_user(uid):
         cur = conn.cursor(); cur.execute("DELETE FROM users WHERE id=%s", (uid,))
         conn.commit(); cur.close()
     flash("Compte supprimÃ©.", "warning"); return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/free-pdfs/create", methods=["POST"])
+@login_required("admin")
+def admin_create_free_pdf():
+    course_code = request.form.get("course_code","").strip()
+    subject = request.form.get("subject","").strip()
+    title = request.form.get("title","").strip()
+    drive_url = request.form.get("drive_url","").strip()
+    sort_order = request.form.get("sort_order","0").strip()
+
+    if not course_code or not subject or not title or not drive_url:
+        flash("La formation, la matière, le titre et le lien PDF sont requis.", "danger")
+        return redirect(url_for("admin_dashboard"))
+    if "drive.google.com" not in drive_url:
+        flash("Veuillez utiliser un lien Google Drive.", "danger")
+        return redirect(url_for("admin_dashboard"))
+    try:
+        sort_order = int(sort_order)
+    except ValueError:
+        sort_order = 0
+
+    allowed_subjects = {row["subject"] for row in fetch_course_subjects(course_code)}
+    if subject not in allowed_subjects:
+        flash("Matière invalide pour cette formation.", "danger")
+        return redirect(url_for("admin_dashboard"))
+
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("""INSERT INTO free_pdfs (course_code, subject, title, drive_url, sort_order, active)
+                       VALUES (%s,%s,%s,%s,%s,TRUE)""",
+                    (course_code, subject, title, drive_url, sort_order))
+        conn.commit(); cur.close()
+    flash("PDF gratuit ajouté.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/free-pdfs/delete/<int:pdf_id>")
+@login_required("admin")
+def admin_delete_free_pdf(pdf_id):
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM free_pdfs WHERE id=%s", (pdf_id,))
+        conn.commit(); cur.close()
+    flash("PDF gratuit supprimé.", "warning")
+    return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/courses/create", methods=["POST"])
 @login_required("admin")
@@ -747,6 +911,80 @@ def teacher_dashboard():
         my_lessons = cur.fetchall(); cur.close()
     return render_template("teacher.html", lessons=my_lessons, courses=courses,
                            assigned_level=assigned_level, assigned_subject=assigned_subject)
+
+@app.route("/teacher/lessons/<int:lesson_id>/edit", methods=["POST"])
+@login_required("teacher")
+def teacher_edit_lesson(lesson_id):
+    assigned_level = session.get("level")
+    assigned_subject = session.get("subject")
+    chapter = request.form.get("chapter_title","").strip()
+    vurl = request.form.get("video_url","").strip() or None
+    pfile = request.files.get("pdf")
+    remove_pdf = request.form.get("remove_pdf") == "1"
+
+    if not chapter:
+        flash("Titre de la leçon requis.", "danger")
+        return redirect(url_for("teacher_dashboard"))
+
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""SELECT id, pdf_file FROM lessons
+                       WHERE id=%s AND uploaded_by=%s AND level=%s AND subject=%s""",
+                    (lesson_id, session["user_id"], assigned_level, assigned_subject))
+        lesson = cur.fetchone()
+        if not lesson:
+            cur.close()
+            flash("Leçon introuvable ou non autorisée.", "danger")
+            return redirect(url_for("teacher_dashboard"))
+
+        if pfile and pfile.filename:
+            if not allowed(pfile.filename, PDF_EXT):
+                cur.close()
+                flash("Fichier PDF non autorisé.", "danger")
+                return redirect(url_for("teacher_dashboard"))
+        new_pdf = lesson["pdf_file"]
+        if remove_pdf:
+            remove_upload(PDF_DIR, lesson["pdf_file"])
+            new_pdf = None
+        if pfile and pfile.filename:
+            remove_upload(PDF_DIR, lesson["pdf_file"])
+            base = secure_filename(pfile.filename)
+            new_pdf = f"{session['user_id']}_{int(time.time())}_{base}"
+            pfile.save(os.path.join(PDF_DIR, new_pdf))
+
+        cur.execute("""UPDATE lessons
+                       SET chapter_title=%s, video_url=%s, pdf_file=%s
+                       WHERE id=%s AND uploaded_by=%s""",
+                    (chapter, vurl, new_pdf, lesson_id, session["user_id"]))
+        conn.commit()
+        cur.close()
+    flash("Leçon mise à jour.", "success")
+    return redirect(url_for("teacher_dashboard"))
+
+@app.route("/teacher/lessons/<int:lesson_id>/delete", methods=["POST"])
+@login_required("teacher")
+def teacher_delete_lesson(lesson_id):
+    assigned_level = session.get("level")
+    assigned_subject = session.get("subject")
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""SELECT id, video_file, pdf_file FROM lessons
+                       WHERE id=%s AND uploaded_by=%s AND level=%s AND subject=%s""",
+                    (lesson_id, session["user_id"], assigned_level, assigned_subject))
+        lesson = cur.fetchone()
+        if not lesson:
+            cur.close()
+            flash("Leçon introuvable ou non autorisée.", "danger")
+            return redirect(url_for("teacher_dashboard"))
+        cur.execute("DELETE FROM lessons WHERE id=%s AND uploaded_by=%s",
+                    (lesson_id, session["user_id"]))
+        conn.commit()
+        cur.close()
+
+    remove_upload(VID_DIR, lesson["video_file"])
+    remove_upload(PDF_DIR, lesson["pdf_file"])
+    flash("Leçon supprimée.", "warning")
+    return redirect(url_for("teacher_dashboard"))
 
 # ===== Tableau de bord Ã‰tudiant =====
 @app.route("/student")

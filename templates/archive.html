@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ARCHIVE | Epsilon Education</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2f5eea;
+      --ink: #1d2b53;
+      --muted: #7380a2;
+      --line: #e6ebf6;
+      --bg: #f6f8fd;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Tajawal", sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #fff 0%, var(--bg) 100%);
+    }
+
+    .page {
+      width: min(520px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 20px 0 30px;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: 26px;
+      direction: ltr;
+      text-align: right;
+    }
+
+    .filters {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 10px 28px rgba(31, 50, 100, .07);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    select,
+    button {
+      width: 100%;
+      min-height: 42px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-weight: 800;
+    }
+
+    select {
+      border: 1px solid var(--line);
+      background: #fbfcff;
+      color: var(--ink);
+      padding: 0 10px;
+    }
+
+    button {
+      border: 0;
+      background: var(--primary);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .hint {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .pdf-course,
+    .pdf-subject,
+    .pdf-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .pdf-course {
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 10px 28px rgba(31, 50, 100, .07);
+    }
+
+    .pdf-course h2 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--primary);
+    }
+
+    .pdf-subject {
+      margin-top: 10px;
+      padding: 10px;
+      background: #fbfcff;
+    }
+
+    .pdf-subject h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .pdf-item {
+      margin-top: 8px;
+      padding: 10px;
+    }
+
+    .pdf-item h4 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+
+    .pdf-frame {
+      width: 100%;
+      height: 320px;
+      border: 0;
+      border-radius: 8px;
+      background: #eef2fb;
+      display: block;
+    }
+
+    .empty {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 420px) {
+      .page { width: min(100% - 24px, 320px); }
+      .pdf-frame { height: 300px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="top">
+      <a href="{{ url_for('home') }}">Epsilon Education</a>
+      <a href="{{ url_for('login') }}">تسجيل الدخول</a>
+    </div>
+
+    <h1>ARCHIVE</h1>
+
+    <form class="filters" method="GET" action="{{ url_for('archive') }}">
+      <div>
+        <label for="level">القسم</label>
+        <select name="level" id="level" required onchange="this.form.submit()">
+          <option value="">اختر القسم</option>
+          {% for course in courses %}
+            <option value="{{ course.code }}" {% if selected_level == course.code %}selected{% endif %}>
+              {{ course.title }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="subject">المادة</label>
+        <select name="subject" id="subject" required {% if not selected_level %}disabled{% endif %}>
+          <option value="">اختر المادة</option>
+          {% for subject in subjects %}
+            <option value="{{ subject.subject }}" {% if selected_subject == subject.subject %}selected{% endif %}>
+              {{ subject.subject }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button type="submit">عرض الملفات</button>
+    </form>
+
+    {% if not selected_level %}
+      <p class="hint">اختر القسم ثم المادة لعرض ملفات PDF الخاصة بها فقط.</p>
+    {% elif not selected_subject %}
+      <p class="hint">اختر المادة لعرض الملفات الخاصة بهذا القسم.</p>
+    {% elif free_pdfs %}
+      {% for course in free_pdfs %}
+        <article class="pdf-course">
+          <h2>{{ course.title }}</h2>
+          {% for subject in course.subjects %}
+            <section class="pdf-subject">
+              <h3>{{ subject.name }}</h3>
+              {% for pdf in subject.pdfs %}
+                <article class="pdf-item">
+                  <h4>{{ pdf.title }}</h4>
+                  <iframe class="pdf-frame"
+                    src="{{ pdf.preview_url }}"
+                    loading="lazy"
+                    referrerpolicy="no-referrer"
+                    oncontextmenu="return false">
+                  </iframe>
+                </article>
+              {% endfor %}
+            </section>
+          {% endfor %}
+        </article>
+      {% endfor %}
+    {% else %}
+      <div class="empty">لا توجد ملفات PDF لهذه المادة الآن.</div>
+    {% endif %}
+  </main>
+</body>
+</html>

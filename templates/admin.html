@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>لوحة الإدارة</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+  <style>
+    .container,
+    .container-fluid { max-width: 1180px; }
+    .table-responsive { overflow-x: auto; }
+  </style>
 </head>
 <body class="bg-light">
 <nav class="navbar navbar-dark bg-dark">
@@ -189,6 +194,56 @@
   </div>
 
   <hr class="my-4">
+  <div class="card p-3 shadow-sm mb-3">
+    <h5 class="mb-3">PDF مجاني في الصفحة الرئيسية</h5>
+    <form method="POST" action="{{ url_for('admin_create_free_pdf') }}" class="row g-2">
+      <div class="col-12 col-md-6">
+        <select name="course_code" id="freePdfCourse" class="form-select" required>
+          <option value="">اختر القسم</option>
+          {% for course in courses %}
+            <option value="{{ course.code }}">{{ course.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <select name="subject" id="freePdfSubject" class="form-select" required>
+          <option value="">اختر المادة</option>
+          {% for item in course_subjects %}
+            <option value="{{ item.subject }}" data-course="{{ item.course_code }}">{{ item.course_code }} - {{ item.subject }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12"><input name="title" class="form-control" placeholder="عنوان PDF" required></div>
+      <div class="col-12"><input type="url" name="drive_url" class="form-control" placeholder="رابط Google Drive PDF" required></div>
+      <div class="col-12 col-md-4"><input type="number" name="sort_order" class="form-control" value="0" placeholder="الترتيب"></div>
+      <div class="col-12 col-md-8"><button class="btn btn-primary w-100">إضافة PDF</button></div>
+    </form>
+  </div>
+
+  {% for course in free_pdfs %}
+    <div class="card p-3 shadow-sm mb-2">
+      <h6 class="mb-2">{{ course.title }}</h6>
+      {% for subject in course.subjects %}
+        <div class="mb-2">
+          <strong>{{ subject.name }}</strong>
+          <div class="list-group mt-2">
+            {% for pdf in subject.pdfs %}
+              <div class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                <span>{{ pdf.title }}</span>
+                <a class="btn btn-danger btn-sm"
+                   href="{{ url_for('admin_delete_free_pdf', pdf_id=pdf.id) }}"
+                   onclick="return confirm('حذف هذا PDF؟')">حذف</a>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-info">لا توجد ملفات PDF مجانية بعد.</div>
+  {% endfor %}
+
+  <hr class="my-4">
   <h5 class="mb-3">إنشاء حساب أستاذ</h5>
   <form class="row g-2" method="POST" action="{{ url_for('admin_create_teacher') }}">
     <div class="col-12 col-md-2"><input name="t_username" class="form-control" placeholder="الاسم" required></div>
@@ -217,20 +272,26 @@
 <script>
   const courseSelect = document.getElementById('teacherCourse');
   const subjectSelect = document.getElementById('teacherSubject');
-  function filterSubjects() {
-    const course = courseSelect.value;
-    [...subjectSelect.options].forEach((option) => {
+  const freePdfCourse = document.getElementById('freePdfCourse');
+  const freePdfSubject = document.getElementById('freePdfSubject');
+  function filterSubjects(courseInput, subjectInput) {
+    const course = courseInput.value;
+    [...subjectInput.options].forEach((option) => {
       if (!option.value) {
         option.hidden = false;
         return;
       }
       option.hidden = option.dataset.course !== course;
     });
-    subjectSelect.value = '';
+    subjectInput.value = '';
   }
   if (courseSelect && subjectSelect) {
-    courseSelect.addEventListener('change', filterSubjects);
-    filterSubjects();
+    courseSelect.addEventListener('change', () => filterSubjects(courseSelect, subjectSelect));
+    filterSubjects(courseSelect, subjectSelect);
+  }
+  if (freePdfCourse && freePdfSubject) {
+    freePdfCourse.addEventListener('change', () => filterSubjects(freePdfCourse, freePdfSubject));
+    filterSubjects(freePdfCourse, freePdfSubject);
   }
 </script>
 </body>
