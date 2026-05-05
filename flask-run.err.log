@@ -1,0 +1,45 @@
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.8.4:5000
+Press CTRL+C to quit
+127.0.0.1 - - [05/May/2026 00:54:23] "GET /robots.txt HTTP/1.1" 200 -
+127.0.0.1 - - [05/May/2026 00:54:23] "GET /sitemap.xml HTTP/1.1" 200 -
+127.0.0.1 - - [05/May/2026 00:54:23] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [05/May/2026 00:54:52] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [05/May/2026 00:54:52] "GET /static/epsilon.svg HTTP/1.1" 304 -
+127.0.0.1 - - [05/May/2026 00:54:54] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [05/May/2026 00:59:02] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [05/May/2026 00:59:02] "GET /static/epsilon.svg HTTP/1.1" 304 -
+127.0.0.1 - - [05/May/2026 00:59:03] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [05/May/2026 00:59:03] "GET /static/epsilon.svg HTTP/1.1" 304 -
+127.0.0.1 - - [05/May/2026 00:59:06] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [05/May/2026 00:59:06] "GET /static/epsilon.svg HTTP/1.1" 304 -
+[2026-05-05 00:59:11,692] ERROR in app: Exception on /login [POST]
+Traceback (most recent call last):
+  File "C:\Users\mts\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mts\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mts\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mts\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mts\Desktop\temeyouzi-flask app\main.py", line 238, in login
+    with db() as conn:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "C:\Users\mts\Desktop\temeyouzi-flask app\main.py", line 51, in db
+    conn = psycopg2.connect(DATABASE_URL) if DATABASE_URL else psycopg2.connect(**DB)
+                                                               ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mts\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: fe_sendauth: no password supplied
+
+127.0.0.1 - - [05/May/2026 00:59:11] "POST /login HTTP/1.1" 500 -
