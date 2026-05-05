@@ -3,7 +3,8 @@ import os, random, time, sys, socket, hashlib, re
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from urllib.parse import parse_qs, urlparse
+from flask import Flask, Response, render_template, request, redirect, url_for, flash, session
 from werkzeug.utils import secure_filename
 import psycopg2
 from psycopg2 import IntegrityError
@@ -87,6 +88,31 @@ def google_drive_preview_url(url):
         if match:
             return f"https://drive.google.com/file/d/{match.group(1)}/preview"
     return url
+
+def video_embed_url(url):
+    if not url:
+        return ""
+    url = url.strip()
+    parsed = urlparse(url)
+    host = parsed.netloc.lower().removeprefix("www.")
+
+    if host == "youtu.be":
+        video_id = parsed.path.strip("/").split("/")[0]
+        return f"https://www.youtube.com/embed/{video_id}" if video_id else url
+
+    if host in {"youtube.com", "m.youtube.com", "music.youtube.com", "youtube-nocookie.com"}:
+        path_parts = [part for part in parsed.path.split("/") if part]
+        if path_parts and path_parts[0] == "embed":
+            return url
+        if path_parts and path_parts[0] in {"shorts", "live"} and len(path_parts) > 1:
+            return f"https://www.youtube.com/embed/{path_parts[1]}"
+        video_id = parse_qs(parsed.query).get("v", [None])[0]
+        if video_id:
+            return f"https://www.youtube.com/embed/{video_id}"
+
+    return google_drive_preview_url(url)
+
+app.jinja_env.filters["video_embed_url"] = video_embed_url
 
 # ===== SMS (Twilio ou mode DEV) =====
 TWILIO_SID   = os.getenv("TWILIO_ACCOUNT_SID")
@@ -179,6 +205,52 @@ def privacy():
 @app.route("/contact")
 def contact():
     return render_template("contact.html")
+
+@app.route("/robots.txt")
+def robots_txt():
+    sitemap_url = url_for("sitemap_xml", _external=True)
+    body = "\n".join([
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /admin",
+        "Disallow: /teacher",
+        "Disallow: /student",
+        "Disallow: /payment",
+        "Disallow: /verify",
+        "Disallow: /reset-verify",
+        "Disallow: /forgot",
+        "Disallow: /logout",
+        "Disallow: /onboarding",
+        f"Sitemap: {sitemap_url}",
+        "",
+    ])
+    return Response(body, mimetype="text/plain")
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    pages = [
+        ("home", "1.0", "daily"),
+        ("archive", "0.8", "daily"),
+        ("about", "0.7", "monthly"),
+        ("contact", "0.6", "monthly"),
+        ("privacy", "0.3", "yearly"),
+    ]
+    lastmod = datetime.utcnow().strftime("%Y-%m-%d")
+    urls = [
+        f"""  <url>
+    <loc>{url_for(endpoint, _external=True)}</loc>
+    <lastmod>{lastmod}</lastmod>
+    <changefreq>{changefreq}</changefreq>
+    <priority>{priority}</priority>
+  </url>"""
+        for endpoint, priority, changefreq in pages
+    ]
+    body = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+%s
+</urlset>
+""" % "\n".join(urls)
+    return Response(body, mimetype="application/xml")
 
 @app.route("/login", methods=["GET","POST"])
 def login():
@@ -423,60 +495,79 @@ def ensure_courses_table():
         cur.close()
 
 def fetch_courses(active_only=True):
-    ensure_courses_table()
-    with db() as conn:
-        cur = dict_cursor(conn)
-        where = "WHERE active=TRUE" if active_only else ""
-        cur.execute(f"""SELECT id, code, title, subtitle, description, badge, icon, theme, sort_order, active
-                        FROM courses {where}
-                        ORDER BY sort_order ASC, id ASC""")
-        rows = cur.fetchall()
-        cur.close()
-    return rows
+    try:
+        ensure_courses_table()
+        with db() as conn:
+            cur = dict_cursor(conn)
+            where = "WHERE active=TRUE" if active_only else ""
+            cur.execute(f"""SELECT id, code, title, subtitle, description, badge, icon, theme, sort_order, active
+                            FROM courses {where}
+                            ORDER BY sort_order ASC, id ASC""")
+            rows = cur.fetchall()
+            cur.close()
+        return rows
+    except psycopg2.OperationalError as e:
+        print("Database unavailable, using default courses:", e)
+        return [dict(course, id=index, sort_order=index, active=True)
+                for index, course in enumerate(COURSES, start=1)]
 
 def fetch_course_subjects(course_code=None):
-    ensure_courses_table()
-    with db() as conn:
-        cur = dict_cursor(conn)
-        if course_code:
-            cur.execute("""SELECT id, course_code, subject, sort_order
-                           FROM course_subjects
-                           WHERE course_code=%s
-                           ORDER BY sort_order ASC, id ASC""", (course_code,))
-        else:
-            cur.execute("""SELECT id, course_code, subject, sort_order
-                           FROM course_subjects
-                           ORDER BY course_code ASC, sort_order ASC, id ASC""")
-        rows = cur.fetchall()
-        cur.close()
-    return rows
+    try:
+        ensure_courses_table()
+        with db() as conn:
+            cur = dict_cursor(conn)
+            if course_code:
+                cur.execute("""SELECT id, course_code, subject, sort_order
+                               FROM course_subjects
+                               WHERE course_code=%s
+                               ORDER BY sort_order ASC, id ASC""", (course_code,))
+            else:
+                cur.execute("""SELECT id, course_code, subject, sort_order
+                               FROM course_subjects
+                               ORDER BY course_code ASC, sort_order ASC, id ASC""")
+            rows = cur.fetchall()
+            cur.close()
+        return rows
+    except psycopg2.OperationalError as e:
+        print("Database unavailable, using default subjects:", e)
+        default_subjects = ["Math", "Physique", "Chimie", "Science naturelle"]
+        courses = [course_code] if course_code else [course["code"] for course in COURSES]
+        return [
+            {"id": index, "course_code": code, "subject": subject, "sort_order": index}
+            for code in courses
+            for index, subject in enumerate(default_subjects, start=1)
+        ]
 
 def fetch_free_pdfs(active_only=True, course_code=None, subject=None):
-    ensure_courses_table()
-    with db() as conn:
-        cur = dict_cursor(conn)
-        clauses = []
-        params = []
-        if active_only:
-            clauses.append("fp.active=TRUE")
-        if course_code:
-            clauses.append("fp.course_code=%s")
-            params.append(course_code)
-        if subject:
-            clauses.append("fp.subject=%s")
-            params.append(subject)
-        where = "WHERE " + " AND ".join(clauses) if clauses else ""
-        cur.execute(f"""
-            SELECT fp.id, fp.course_code, c.title AS course_title, fp.subject,
-                   fp.title, fp.drive_url, fp.sort_order, fp.active, fp.created_at
-            FROM free_pdfs fp
-            JOIN courses c ON c.code = fp.course_code
-            {where}
-            ORDER BY c.sort_order ASC, c.id ASC,
-                     fp.subject ASC, fp.sort_order ASC, fp.id DESC
-        """, params)
-        rows = cur.fetchall()
-        cur.close()
+    try:
+        ensure_courses_table()
+        with db() as conn:
+            cur = dict_cursor(conn)
+            clauses = []
+            params = []
+            if active_only:
+                clauses.append("fp.active=TRUE")
+            if course_code:
+                clauses.append("fp.course_code=%s")
+                params.append(course_code)
+            if subject:
+                clauses.append("fp.subject=%s")
+                params.append(subject)
+            where = "WHERE " + " AND ".join(clauses) if clauses else ""
+            cur.execute(f"""
+                SELECT fp.id, fp.course_code, c.title AS course_title, fp.subject,
+                       fp.title, fp.drive_url, fp.sort_order, fp.active, fp.created_at
+                FROM free_pdfs fp
+                JOIN courses c ON c.code = fp.course_code
+                {where}
+                ORDER BY c.sort_order ASC, c.id ASC,
+                         fp.subject ASC, fp.sort_order ASC, fp.id DESC
+            """, params)
+            rows = cur.fetchall()
+            cur.close()
+    except psycopg2.OperationalError as e:
+        print("Database unavailable, no free PDFs loaded:", e)
+        return []
 
     grouped = []
     by_course = {}
@@ -506,9 +597,14 @@ _schema_ready = False
 @app.before_request
 def ensure_schema_ready():
     global _schema_ready
+    if request.endpoint in {"robots_txt", "sitemap_xml", "static"}:
+        return
     if not _schema_ready:
-        ensure_courses_table()
-        _schema_ready = True
+        try:
+            ensure_courses_table()
+            _schema_ready = True
+        except psycopg2.OperationalError as e:
+            print("Database unavailable during schema check:", e)
 
 @app.route("/courses", methods=["GET","POST"])
 def courses():
@@ -877,7 +973,7 @@ def teacher_dashboard():
         level   = assigned_level
         vfile   = request.files.get("video")
         pfile   = request.files.get("pdf")
-        vurl    = request.form.get("video_url","").strip() or None  # NEW: video url
+        vurl    = video_embed_url(request.form.get("video_url","")) or None
 
         if not subject or not chapter or not level:
             flash("Champs obligatoires manquants.", "danger"); return redirect(url_for("teacher_dashboard"))
@@ -918,7 +1014,7 @@ def teacher_edit_lesson(lesson_id):
     assigned_level = session.get("level")
     assigned_subject = session.get("subject")
     chapter = request.form.get("chapter_title","").strip()
-    vurl = request.form.get("video_url","").strip() or None
+    vurl = video_embed_url(request.form.get("video_url","")) or None
     pfile = request.files.get("pdf")
     remove_pdf = request.form.get("remove_pdf") == "1"
 

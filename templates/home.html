@@ -3,7 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Epsilon Education</title>
+  <title>Epsilon Education | منصة تعليمية للدروس والملفات</title>
+  <meta name="description" content="Epsilon Education منصة تعليمية تجمع الدروس، التمارين، الفيديوهات، وملفات PDF في مكان واحد للطلاب.">
+  <meta name="keywords" content="Epsilon Education, ابسلون, إبسيلون, تعليم, دروس, ملفات PDF, منصة تعليمية">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="{{ url_for('home', _external=True) }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Epsilon Education">
+  <meta property="og:title" content="Epsilon Education | منصة تعليمية للدروس والملفات">
+  <meta property="og:description" content="منصة تعليمية تجمع الدروس، التمارين، الفيديوهات، وملفات PDF في مكان واحد للطلاب.">
+  <meta property="og:url" content="{{ url_for('home', _external=True) }}">
+  <meta property="og:image" content="{{ url_for('static', filename='epsilon.svg', _external=True) }}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Epsilon Education">
+  <meta name="twitter:description" content="منصة تعليمية للدروس والملفات التعليمية.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    "name": "Epsilon Education",
+    "url": "{{ url_for('home', _external=True) }}",
+    "logo": "{{ url_for('static', filename='epsilon.svg', _external=True) }}",
+    "sameAs": [
+      "https://youtube.com/@epsiloneducation-t5j"
+    ]
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
@@ -110,6 +135,16 @@
       width: 21px;
       height: 21px;
       display: block;
+    }
+
+    .store-link svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .store-link.apple svg {
+      width: 20px;
+      height: 20px;
     }
 
     .nav {
@@ -470,6 +505,7 @@
       .logo strong { font-size: 20px; }
       .social-link { width: 36px; height: 36px; }
       .social-link svg { width: 19px; height: 19px; }
+      .store-link.apple svg { width: 18px; height: 18px; }
       .nav {
         order: 3;
         width: 100%;
@@ -507,6 +543,7 @@
       .site { width: min(100% - 18px, 300px); }
       .logo strong { font-size: 18px; }
       .social-link { width: 34px; height: 34px; }
+      .social-links { gap: 6px; }
       .nav a { font-size: 11px; }
       .hero-copy h1 { font-size: 21px; }
       .primary-action,
@@ -548,6 +585,19 @@
       </a>
     
       <div class="social-links" aria-label="روابط التواصل">
+        <a class="social-link store-link apple" href="#" aria-label="App Store">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#111111" d="M18.7 12.8c0-3 2.5-4.4 2.6-4.5-1.4-2-3.5-2.3-4.2-2.4-1.8-.2-3.5 1-4.4 1-.9 0-2.2-1-3.7-1-1.9 0-3.7 1.1-4.7 2.9-2 3.5-.5 8.6 1.4 11.4.9 1.4 2.1 3 3.6 2.9 1.4-.1 2-.9 3.7-.9s2.2.9 3.8.9c1.6 0 2.6-1.4 3.5-2.8 1.1-1.6 1.5-3.1 1.6-3.2 0-.1-3.1-1.3-3.2-4.3ZM15.9 4c.8-1 1.3-2.3 1.1-3.6-1.1 0-2.5.8-3.3 1.7-.7.8-1.4 2.2-1.2 3.5 1.3.1 2.6-.6 3.4-1.6Z"/>
+          </svg>
+        </a>
+        <a class="social-link store-link google-play" href="#" aria-label="Google Play">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#34A853" d="M3.4 1.4c-.3.3-.4.8-.4 1.4v18.4c0 .6.2 1 .5 1.4l10-10.6-10.1-10.6Z"/>
+            <path fill="#FBBC04" d="m16.7 8.6-3.2 3.4 3.2 3.4 4.3-2.5c1.3-.7 1.3-1.9 0-2.7l-4.3-1.6Z"/>
+            <path fill="#4285F4" d="M3.5 1.4 13.5 12l3.2-3.4L5.5 2.1c-.8-.5-1.5-.7-2-.7Z"/>
+            <path fill="#EA4335" d="M3.5 22.6c.5 0 1.2-.2 2-.7l11.2-6.5-3.2-3.4-10 10.6Z"/>
+          </svg>
+        </a>
         <a class="social-link" href="https://www.facebook.com/profile.php?id=61578209885150" aria-label="Facebook">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.414c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.97H15.83c-1.49 0-1.955.93-1.955 1.885v2.265h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
