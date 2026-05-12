@@ -25,6 +25,14 @@ app = Flask(__name__, template_folder=os.path.join(BASE, "templates"),
 app.secret_key = os.getenv("SECRET_KEY", "change-this-secret")
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100 MB
 
+@app.after_request
+def add_api_cors_headers(response):
+    if request.path.startswith("/api/"):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
+    return response
+
 # Dossiers dâ€™upload
 UP = os.path.join(BASE, "static", "uploads")
 PAY_DIR = os.path.join(UP, "payments")
