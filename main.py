@@ -1254,10 +1254,14 @@ def api_user_payload(user):
         "createdAt": user.get("created_at").isoformat() if user.get("created_at") else None,
     }
 
-def api_course_payload(course):
-    subjects = fetch_course_subjects(course["code"])
+def api_course_payload(course, subjects_by_course=None):
+    subjects_by_course = subjects_by_course or {}
+    subjects = subjects_by_course.get(course["code"])
+    if subjects is None:
+        subjects = fetch_course_subjects(course["code"])
     return {
-        "id": str(course["id"]),
+        "id": course["code"],
+        "dbId": str(course["id"]),
         "code": course["code"],
         "title": course["title"],
         "name": course["title"],
@@ -1437,16 +1441,124 @@ def api_create_user():
 
     return jsonify({"user": api_user_payload(user)}), 201
 
+@app.post("/api/auth/register-student")
+def api_register_student():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("name") or data.get("username") or "").strip()
+    phone = (data.get("phone") or data.get("email") or "").strip()
+    password = data.get("password") or ""
+    level = data.get("level") or data.get("classId") or data.get("courseId")
+    if not username or not phone or not password or not level:
+        return api_error("Name, phone/email, password and course are required.", 400, "missing_fields")
+    try:
+        with db() as conn:
+            cur = dict_cursor(conn)
+            cur.execute("""INSERT INTO users
+                           (username, phone, password, role, level, status, phone_verified)
+                           VALUES (%s,%s,%s,'student',%s,'pending',TRUE)
+                           RETURNING *""",
+                        (username, phone, hash_password(password), level))
+            user = cur.fetchone()
+            conn.commit()
+            cur.close()
+    except IntegrityError:
+        return api_error("Username or phone already exists.", 409, "user_exists")
+    return jsonify({"user": api_user_payload(user)}), 201
+
+@app.post("/api/admin/teachers")
+@api_login_required(ADMIN_ROLES)
+def api_create_teacher():
+    data = request.get_json(silent=True) or {}
+    data["role"] = "teacher"
+    data["status"] = "active"
+    return api_create_user()
+
+@app.post("/api/admin/students")
+@api_login_required(ADMIN_ROLES)
+def api_create_student_by_admin():
+    data = request.get_json(silent=True) or {}
+    data["role"] = "student"
+    data["status"] = "active"
+    return api_create_user()
+
 @app.get("/api/courses")
 def api_courses():
     courses = fetch_courses(active_only=request.args.get("all") != "1")
-    return jsonify({"courses": [api_course_payload(course) for course in courses]})
+    subjects_by_course = {}
+    for subject in fetch_course_subjects():
+        subjects_by_course.setdefault(subject["course_code"], []).append(subject)
+    return jsonify({
+        "courses": [
+            api_course_payload(course, subjects_by_course)
+            for course in courses
+        ]
+    })
+
+@app.post("/api/courses")
+@api_login_required(ADMIN_ROLES)
+def api_create_course():
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()
+    description = (data.get("description") or "").strip()
+    price = (data.get("price") or "").strip()
+    subjects = data.get("subjects") if isinstance(data.get("subjects"), list) else []
+    if not title:
+        return api_error("Title is required.", 400, "missing_title")
+    code_base = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") or f"course-{int(time.time())}"
+    code = code_base
+    with db() as conn:
+        cur = dict_cursor(conn)
+        suffix = 1
+        while True:
+            cur.execute("SELECT id FROM courses WHERE code=%s", (code,))
+            if not cur.fetchone():
+                break
+            suffix += 1
+            code = f"{code_base}-{suffix}"
+        cur.execute("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM courses")
+        sort_order = cur.fetchone()["next_order"]
+        cur.execute("""INSERT INTO courses
+                       (code, title, subtitle, description, badge, sort_order, active)
+                       VALUES (%s,%s,%s,%s,%s,%s,TRUE)
+                       RETURNING *""", (code, title, description, description, price, sort_order))
+        course = cur.fetchone()
+        for index, subject in enumerate([str(item).strip() for item in subjects if str(item).strip()], start=1):
+            cur.execute("""INSERT INTO course_subjects (course_code, subject, sort_order)
+                           VALUES (%s,%s,%s)
+                           ON CONFLICT (course_code, subject) DO NOTHING""", (code, subject, index))
+        conn.commit()
+        cur.close()
+    return jsonify({"course": api_course_payload(course)}), 201
+
+@app.delete("/api/courses/<course_key>")
+@api_login_required(ADMIN_ROLES)
+def api_delete_course(course_key):
+    with db() as conn:
+        cur = conn.cursor()
+        if course_key.isdigit():
+            cur.execute("DELETE FROM courses WHERE id=%s", (int(course_key),))
+        else:
+            cur.execute("DELETE FROM courses WHERE code=%s", (course_key,))
+        conn.commit()
+        cur.close()
+    return jsonify({"deleted": True, "id": str(course_key)})
 
 @app.get("/api/classes")
 def api_classes():
     courses = fetch_courses(active_only=True)
     classes = [{"id": course["code"], "name": course["title"], "level": course["code"]} for course in courses]
     return jsonify({"classes": classes})
+
+@app.post("/api/classes")
+@api_login_required(ADMIN_ROLES)
+def api_create_class():
+    data = request.get_json(silent=True) or {}
+    title = (data.get("name") or data.get("level") or "").strip()
+    if not title:
+        return api_error("Name is required.", 400, "missing_name")
+    data["title"] = title
+    data["description"] = data.get("description") or data.get("level") or ""
+    return api_create_course()
 
 @app.get("/api/courses/<course_code>/subjects")
 def api_course_subjects(course_code):
@@ -1545,6 +1657,44 @@ def api_delete_lesson(lesson_id):
     if not deleted:
         return api_error("Lesson not found.", 404, "not_found")
     return jsonify({"deleted": True, "id": str(lesson_id)})
+
+@app.get("/api/guest-videos")
+def api_guest_videos():
+    return jsonify({"items": []})
+
+@app.get("/api/archive-files")
+def api_archive_files():
+    items = []
+    for course in fetch_free_pdfs(active_only=True):
+        for subject in course["subjects"]:
+            for pdf in subject["pdfs"]:
+                items.append({
+                    "id": str(pdf["id"]),
+                    "title": pdf["title"],
+                    "url": pdf["preview_url"],
+                    "description": subject["name"],
+                    "courseId": course["level"],
+                    "createdAt": pdf["created_at"].isoformat() if pdf.get("created_at") else None,
+                })
+    return jsonify({"items": items})
+
+@app.get("/api/notifications")
+@api_login_required()
+def api_notifications():
+    return jsonify({"notifications": []})
+
+@app.post("/api/notifications")
+@api_login_required(ADMIN_ROLES)
+def api_add_notification():
+    data = request.get_json(silent=True) or {}
+    return jsonify({
+        "notification": {
+            "id": str(int(time.time() * 1000)),
+            "title": (data.get("title") or "").strip(),
+            "body": (data.get("body") or "").strip(),
+            "createdAt": datetime.utcnow().isoformat(),
+        }
+    }), 201
 
 if __name__ == "__main__":
     try:

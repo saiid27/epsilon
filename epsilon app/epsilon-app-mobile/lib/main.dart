@@ -13,8 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import 'api_repository.dart';
 import 'firebase_options.dart';
-import 'firebase_repository.dart';
 import 'firebase_schema.dart';
 
 @pragma('vm:entry-point')
@@ -36,24 +36,7 @@ class FirebaseBootstrap {
   final String? errorMessage;
 
   static Future<FirebaseBootstrap> initialize() async {
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      unawaited(
-        PushNotifications.initialize().catchError((Object error) {
-          debugPrint('Push notifications initialization skipped: $error');
-        }),
-      );
-      return const FirebaseBootstrap(isReady: true);
-    } on Object catch (error) {
-      debugPrint('Firebase initialization skipped: $error');
-      return FirebaseBootstrap(
-        isReady: false,
-        errorMessage:
-            'Firebase غير مهيأ بعد. أضف ملفات الإعداد ثم أعد تشغيل التطبيق.',
-      );
-    }
+    return const FirebaseBootstrap(isReady: true);
   }
 }
 
@@ -320,15 +303,15 @@ class SchoolStore extends ChangeNotifier {
   SchoolStore({required this.firebaseEnabled}) {
     unawaited(_loadReadNotifications());
     if (firebaseEnabled) {
-      _repository = FirebaseRepository();
-      _bindFirebase();
+      _repository = ApiRepository();
+      unawaited(_bindApi());
     } else {
       _seed();
     }
   }
 
   final bool firebaseEnabled;
-  FirebaseRepository? _repository;
+  dynamic _repository;
   final List<StreamSubscription<Object?>> _subscriptions = [];
   StreamSubscription<Object?>? _usersSubscription;
   StreamSubscription<Object?>? _currentUserSubscription;
@@ -394,6 +377,7 @@ class SchoolStore extends ChangeNotifier {
     return classes.first.id;
   }
 
+  // ignore: unused_element
   void _bindFirebase() {
     final repository = _repository!;
     _listenToPublicCourses();
@@ -517,6 +501,106 @@ class SchoolStore extends ChangeNotifier {
     );
   }
 
+  Future<void> _bindApi() async {
+    try {
+      final repository = _repository as ApiRepository;
+      await repository.initialize();
+      await _loadPublicApiData();
+      final userData = await repository.currentUser();
+      if (userData != null) {
+        currentUser = _userFromApi(userData);
+        users
+          ..clear()
+          ..add(currentUser!);
+        await _loadSignedInApiData();
+      }
+      notifyListeners();
+    } on Object catch (error) {
+      _rememberError(error);
+      _seed();
+    }
+  }
+
+  Future<void> _loadPublicApiData() async {
+    final repository = _repository as ApiRepository;
+    final classesData = await repository.get('/api/classes');
+    classes
+      ..clear()
+      ..addAll(
+        (classesData['classes'] as List? ?? const []).whereType<Map>().map(
+          (item) => _classFromApi(Map<String, dynamic>.from(item)),
+        ),
+      );
+
+    final coursesData = await repository.get('/api/courses');
+    courses
+      ..clear()
+      ..addAll(
+        (coursesData['courses'] as List? ?? const []).whereType<Map>().map(
+          (item) => _courseFromApi(Map<String, dynamic>.from(item)),
+        ),
+      );
+
+    final guestData = await repository.get('/api/guest-videos');
+    guestVideos
+      ..clear()
+      ..addAll(
+        (guestData['items'] as List? ?? const []).whereType<Map>().map(
+          (item) => _guestContentFromApi(Map<String, dynamic>.from(item)),
+        ),
+      );
+
+    final archiveData = await repository.get('/api/archive-files');
+    archiveFiles
+      ..clear()
+      ..addAll(
+        (archiveData['items'] as List? ?? const []).whereType<Map>().map(
+          (item) => _guestContentFromApi(Map<String, dynamic>.from(item)),
+        ),
+      );
+  }
+
+  Future<void> _loadSignedInApiData() async {
+    final repository = _repository as ApiRepository;
+    final user = currentUser;
+    if (user == null) {
+      return;
+    }
+
+    if (user.role == UserRole.admin) {
+      final usersData = await repository.get('/api/users');
+      users
+        ..clear()
+        ..addAll(
+          (usersData['users'] as List? ?? const []).whereType<Map>().map(
+            (item) => _userFromApi(Map<String, dynamic>.from(item)),
+          ),
+        );
+      currentUser = users
+          .where((candidate) => candidate.id == user.id)
+          .cast<AppUser?>()
+          .firstOrNull;
+    }
+
+    final lessonsData = await repository.get('/api/lessons');
+    lessons
+      ..clear()
+      ..addAll(
+        (lessonsData['lessons'] as List? ?? const []).whereType<Map>().map(
+          (item) => _lessonFromApi(Map<String, dynamic>.from(item)),
+        ),
+      );
+
+    final notificationsData = await repository.get('/api/notifications');
+    notifications
+      ..clear()
+      ..addAll(
+        (notificationsData['notifications'] as List? ?? const [])
+            .whereType<Map>()
+            .map((item) => _notificationFromApi(Map<String, dynamic>.from(item))),
+      );
+  }
+
   void _rememberError(Object error) {
     lastError = error.toString();
     notifyListeners();
@@ -587,6 +671,7 @@ class SchoolStore extends ChangeNotifier {
     await _repository!.setStudentActiveDevice(uid: uid, deviceId: deviceId);
   }
 
+  // ignore: unused_element
   Future<void> _claimStudentDeviceIfNeeded(String uid) async {
     final snapshot = await _repository!.users.doc(uid).get();
     final user = _userFromDoc(snapshot);
@@ -791,6 +876,94 @@ class SchoolStore extends ChangeNotifier {
     );
   }
 
+  AppUser _userFromApi(Map<String, dynamic> data) {
+    return AppUser(
+      id: '${data['id'] ?? ''}',
+      name: (data['name'] as String?) ?? (data['username'] as String?) ?? 'مستخدم',
+      email: (data['email'] as String?) ?? (data['phone'] as String?) ?? '',
+      password: '',
+      role: _roleFromString(data['role'] as String?),
+      status: _statusFromString(data['status'] as String?),
+      classId: data['classId'] as String? ?? data['level'] as String?,
+      courseId: data['courseId'] as String? ?? data['level'] as String?,
+      subject: data['subject'] as String?,
+      paymentProofPath: data['paymentProofUrl'] as String?,
+      paymentSenderPhone: data['paymentSenderPhone'] as String?,
+      activeDeviceId: data['activeDeviceId'] as String?,
+    );
+  }
+
+  SchoolClass _classFromApi(Map<String, dynamic> data) {
+    return SchoolClass(
+      id: '${data['id'] ?? data['level'] ?? ''}',
+      name: (data['name'] as String?) ?? 'عام',
+      level: (data['level'] as String?) ?? '${data['id'] ?? ''}',
+    );
+  }
+
+  Course _courseFromApi(Map<String, dynamic> data) {
+    final subjects = data['subjects'];
+    return Course(
+      id: '${data['id'] ?? data['code'] ?? ''}',
+      title: (data['title'] as String?) ?? (data['name'] as String?) ?? 'قسم',
+      classId:
+          (data['classId'] as String?) ??
+          (data['level'] as String?) ??
+          '${data['code'] ?? data['id'] ?? ''}',
+      description: (data['description'] as String?) ?? '',
+      price: (data['price'] as String?) ?? '',
+      subjects: subjects is List
+          ? subjects.whereType<String>().toList()
+          : const ['Math', 'Physique', 'Chimie'],
+      isActive: (data['isActive'] as bool?) ?? true,
+    );
+  }
+
+  Lesson _lessonFromApi(Map<String, dynamic> data) {
+    return Lesson(
+      id: '${data['id'] ?? ''}',
+      title: (data['title'] as String?) ?? 'درس',
+      url:
+          (data['url'] as String?) ??
+          (data['videoUrl'] as String?) ??
+          (data['pdfUrl'] as String?) ??
+          '',
+      teacherId: '${data['teacherId'] ?? ''}',
+      classId: (data['classId'] as String?) ?? (data['level'] as String?) ?? '',
+      courseId: (data['courseId'] as String?) ?? (data['level'] as String?) ?? '',
+      subject: (data['subject'] as String?) ?? 'مادة عامة',
+      createdAt: _dateFromApi(data['createdAt']),
+      isPublished: (data['isPublished'] as bool?) ?? true,
+    );
+  }
+
+  GuestContentItem _guestContentFromApi(Map<String, dynamic> data) {
+    return GuestContentItem(
+      id: '${data['id'] ?? ''}',
+      title: (data['title'] as String?) ?? 'محتوى',
+      url: (data['url'] as String?) ?? '',
+      description: (data['description'] as String?) ?? '',
+      courseId: data['courseId'] as String?,
+      createdAt: _dateFromApi(data['createdAt']),
+    );
+  }
+
+  AppNotification _notificationFromApi(Map<String, dynamic> data) {
+    return AppNotification(
+      id: '${data['id'] ?? ''}',
+      title: (data['title'] as String?) ?? 'إشعار',
+      body: (data['body'] as String?) ?? '',
+      createdAt: _dateFromApi(data['createdAt']),
+    );
+  }
+
+  DateTime _dateFromApi(Object? value) {
+    if (value is String) {
+      return DateTime.tryParse(value)?.toLocal() ?? DateTime.now();
+    }
+    return DateTime.now();
+  }
+
   UserRole _roleFromString(String? value) {
     return switch (value) {
       'admin' => UserRole.admin,
@@ -936,24 +1109,23 @@ class SchoolStore extends ChangeNotifier {
     if (firebaseEnabled) {
       try {
         isLoading = true;
-        _claimingStudentDevice = true;
         lastError = null;
         notifyListeners();
-        final credential = await _repository!.signIn(
+        final userData = await (_repository as ApiRepository).signIn(
           email: email,
           password: password,
         );
-        final uid = credential.user?.uid;
-        if (uid != null) {
-          await _claimStudentDeviceIfNeeded(uid);
-        }
+        currentUser = _userFromApi(userData);
+        users
+          ..clear()
+          ..add(currentUser!);
+        await _loadSignedInApiData();
         return true;
       } on Object catch (error) {
         lastError = error.toString();
-        unawaited(_repository!.signOut());
+        unawaited((_repository as ApiRepository).signOut());
         return false;
       } finally {
-        _claimingStudentDevice = false;
         isLoading = false;
         notifyListeners();
       }
@@ -975,9 +1147,11 @@ class SchoolStore extends ChangeNotifier {
 
   void logout() {
     if (firebaseEnabled) {
-      unawaited(_repository!.signOut());
+      unawaited((_repository as ApiRepository).signOut());
     }
     currentUser = null;
+    users.clear();
+    lessons.clear();
     notifyListeners();
   }
 
@@ -986,17 +1160,9 @@ class SchoolStore extends ChangeNotifier {
     required String newPassword,
   }) async {
     if (firebaseEnabled) {
-      if (newPassword.length < 6) {
-        return false;
-      }
-      try {
-        await _repository!.changePassword(newPassword);
-        return true;
-      } on Object catch (error) {
-        lastError = error.toString();
-        notifyListeners();
-        return false;
-      }
+      lastError = 'تغيير كلمة المرور غير متاح من التطبيق حالياً.';
+      notifyListeners();
+      return false;
     }
 
     final user = currentUser;
@@ -1032,7 +1198,8 @@ class SchoolStore extends ChangeNotifier {
 
   Future<void> sendPasswordResetEmail(String email) async {
     if (firebaseEnabled) {
-      await _repository!.sendPasswordResetEmail(email);
+      lastError = 'استعادة كلمة المرور تتم حالياً من موقع الإدارة.';
+      notifyListeners();
       return;
     }
   }
@@ -1050,16 +1217,14 @@ class SchoolStore extends ChangeNotifier {
       if (course == null) {
         return;
       }
-      await _repository!.createStudentAccount(
+      await (_repository as ApiRepository).registerStudent(
         name: name,
         email: email,
         password: password,
-        classId: course.classId,
         courseId: courseId,
-        paymentProofPath: paymentProofPath,
         paymentSenderPhone: paymentSenderPhone,
       );
-      await _repository!.signOut();
+      await _loadPublicApiData();
       return;
     }
 
@@ -1092,14 +1257,15 @@ class SchoolStore extends ChangeNotifier {
         return;
       }
       unawaited(
-        _repository!
-            .createStudentByAdmin(
+        (_repository as ApiRepository)
+            .createUser(
               name: name,
               email: email,
               password: password,
-              classId: course.classId,
+              role: 'student',
               courseId: courseId,
             )
+            .then((_) => _loadSignedInApiData())
             .catchError(_rememberError),
       );
       return;
@@ -1129,14 +1295,15 @@ class SchoolStore extends ChangeNotifier {
     required String subject,
   }) async {
     if (firebaseEnabled) {
-      await _repository!.createTeacherAccount(
+      await (_repository as ApiRepository).createUser(
         name: name,
         email: email,
         password: password,
-        classId: classId,
+        role: 'teacher',
         courseId: courseId,
         subject: subject,
       );
+      await _loadSignedInApiData();
       return;
     }
 
@@ -1159,8 +1326,9 @@ class SchoolStore extends ChangeNotifier {
   void approveUser(AppUser user) {
     if (firebaseEnabled) {
       unawaited(
-        _repository!
+        (_repository as ApiRepository)
             .updateAccountStatus(user.id, _statusValue(AccountStatus.active))
+            .then((_) => _loadSignedInApiData())
             .catchError(_rememberError),
       );
       return;
@@ -1172,8 +1340,9 @@ class SchoolStore extends ChangeNotifier {
   void blockUser(AppUser user) {
     if (firebaseEnabled) {
       unawaited(
-        _repository!
+        (_repository as ApiRepository)
             .updateAccountStatus(user.id, _statusValue(AccountStatus.blocked))
+            .then((_) => _loadSignedInApiData())
             .catchError(_rememberError),
       );
       return;
@@ -1185,8 +1354,9 @@ class SchoolStore extends ChangeNotifier {
   void rejectUser(AppUser user) {
     if (firebaseEnabled) {
       unawaited(
-        _repository!
+        (_repository as ApiRepository)
             .updateAccountStatus(user.id, _statusValue(AccountStatus.rejected))
+            .then((_) => _loadSignedInApiData())
             .catchError(_rememberError),
       );
       return;
@@ -1198,8 +1368,9 @@ class SchoolStore extends ChangeNotifier {
   void activateUser(AppUser user) {
     if (firebaseEnabled) {
       unawaited(
-        _repository!
+        (_repository as ApiRepository)
             .updateAccountStatus(user.id, _statusValue(AccountStatus.active))
+            .then((_) => _loadSignedInApiData())
             .catchError(_rememberError),
       );
       return;
@@ -1210,7 +1381,8 @@ class SchoolStore extends ChangeNotifier {
 
   Future<void> deleteUser(AppUser user) async {
     if (firebaseEnabled) {
-      await _repository!.deleteUserAccount(user.id);
+      await (_repository as ApiRepository).deleteUserAccount(user.id);
+      await _loadSignedInApiData();
       return;
     }
 
@@ -1227,7 +1399,7 @@ class SchoolStore extends ChangeNotifier {
   }) {
     if (firebaseEnabled) {
       unawaited(
-        _repository!
+        (_repository as ApiRepository)
             .createCourse(
               title: title,
               classId: classId,
@@ -1235,6 +1407,7 @@ class SchoolStore extends ChangeNotifier {
               price: price,
               subjects: subjects,
             )
+            .then((_) => _loadPublicApiData())
             .catchError(_rememberError),
       );
       return;
@@ -1255,9 +1428,8 @@ class SchoolStore extends ChangeNotifier {
 
   void updatePaymentNumber(String value) {
     if (firebaseEnabled) {
-      unawaited(
-        _repository!.updatePaymentNumber(value).catchError(_rememberError),
-      );
+      paymentNumber = value.trim();
+      notifyListeners();
       return;
     }
     paymentNumber = value.trim();
@@ -1266,9 +1438,8 @@ class SchoolStore extends ChangeNotifier {
 
   void updatePaymentAmount(String value) {
     if (firebaseEnabled) {
-      unawaited(
-        _repository!.updatePaymentAmount(value).catchError(_rememberError),
-      );
+      paymentAmount = value.trim();
+      notifyListeners();
       return;
     }
     paymentAmount = value.trim();
@@ -1278,13 +1449,14 @@ class SchoolStore extends ChangeNotifier {
   void createClass({required String name, required String level}) {
     if (firebaseEnabled) {
       unawaited(
-        _repository!.classes
-            .add({
+        (_repository as ApiRepository)
+            .post('/api/classes', {
               'name': name.trim(),
               'level': level.trim(),
-              'createdAt': FieldValue.serverTimestamp(),
+              'title': name.trim(),
+              'description': level.trim(),
             })
-            .then<void>((_) {})
+            .then((_) => _loadPublicApiData())
             .catchError(_rememberError),
       );
       return;
@@ -1303,7 +1475,10 @@ class SchoolStore extends ChangeNotifier {
   void deleteCourse(Course course) {
     if (firebaseEnabled) {
       unawaited(
-        _repository!.deleteCourse(course.id).catchError(_rememberError),
+        (_repository as ApiRepository)
+            .deleteCourse(course.id)
+            .then((_) => _loadPublicApiData())
+            .catchError(_rememberError),
       );
       return;
     }
@@ -1320,11 +1495,8 @@ class SchoolStore extends ChangeNotifier {
 
   void deleteClass(SchoolClass schoolClass) {
     if (firebaseEnabled) {
-      unawaited(
-        _repository!.classes
-            .doc(schoolClass.id)
-            .delete()
-            .catchError(_rememberError),
+      deleteCourse(
+        Course(id: schoolClass.id, title: schoolClass.name, classId: schoolClass.id),
       );
       return;
     }
@@ -1354,15 +1526,15 @@ class SchoolStore extends ChangeNotifier {
 
     if (firebaseEnabled) {
       unawaited(
-        _repository!
+        (_repository as ApiRepository)
             .createLesson(
               title: title,
               url: url,
-              teacherId: teacher.id,
               classId: classId,
               courseId: courseId,
               subject: teacher.subject ?? 'مادة عامة',
             )
+            .then((_) => _loadSignedInApiData())
             .catchError(_rememberError),
       );
       return;
@@ -1395,14 +1567,13 @@ class SchoolStore extends ChangeNotifier {
         return;
       }
       unawaited(
-        _repository!
+        (_repository as ApiRepository)
             .updateLesson(
               lessonId: lesson.id,
               title: title,
               url: url,
-              classId: course.classId,
-              courseId: courseId,
             )
+            .then((_) => _loadSignedInApiData())
             .catchError(_rememberError),
       );
       return;
@@ -1420,7 +1591,10 @@ class SchoolStore extends ChangeNotifier {
   void deleteLesson(Lesson lesson) {
     if (firebaseEnabled) {
       unawaited(
-        _repository!.deleteLesson(lesson.id).catchError(_rememberError),
+        (_repository as ApiRepository)
+            .deleteLesson(lesson.id)
+            .then((_) => _loadSignedInApiData())
+            .catchError(_rememberError),
       );
       return;
     }
@@ -1434,20 +1608,6 @@ class SchoolStore extends ChangeNotifier {
     required String description,
     required String courseId,
   }) {
-    if (firebaseEnabled) {
-      unawaited(
-        _repository!
-            .addGuestVideo(
-              title: title,
-              url: url,
-              description: description,
-              courseId: courseId,
-            )
-            .catchError(_rememberError),
-      );
-      return;
-    }
-
     guestVideos.insert(
       0,
       GuestContentItem(
@@ -1468,20 +1628,6 @@ class SchoolStore extends ChangeNotifier {
     required String description,
     required String courseId,
   }) {
-    if (firebaseEnabled) {
-      unawaited(
-        _repository!
-            .addArchiveFile(
-              title: title,
-              url: url,
-              description: description,
-              courseId: courseId,
-            )
-            .catchError(_rememberError),
-      );
-      return;
-    }
-
     archiveFiles.insert(
       0,
       GuestContentItem(
@@ -1497,12 +1643,6 @@ class SchoolStore extends ChangeNotifier {
   }
 
   void deleteGuestVideo(GuestContentItem item) {
-    if (firebaseEnabled) {
-      unawaited(
-        _repository!.deleteGuestVideo(item.id).catchError(_rememberError),
-      );
-      return;
-    }
     guestVideos.remove(item);
     notifyListeners();
   }
@@ -1514,21 +1654,6 @@ class SchoolStore extends ChangeNotifier {
     required String description,
     required String courseId,
   }) {
-    if (firebaseEnabled) {
-      unawaited(
-        _repository!
-            .updateGuestVideo(
-              id: item.id,
-              title: title,
-              url: url,
-              description: description,
-              courseId: courseId,
-            )
-            .catchError(_rememberError),
-      );
-      return;
-    }
-
     item.title = title.trim();
     item.url = url.trim();
     item.description = description.trim();
@@ -1537,12 +1662,6 @@ class SchoolStore extends ChangeNotifier {
   }
 
   void deleteArchiveFile(GuestContentItem item) {
-    if (firebaseEnabled) {
-      unawaited(
-        _repository!.deleteArchiveFile(item.id).catchError(_rememberError),
-      );
-      return;
-    }
     archiveFiles.remove(item);
     notifyListeners();
   }
@@ -1554,21 +1673,6 @@ class SchoolStore extends ChangeNotifier {
     required String description,
     required String courseId,
   }) {
-    if (firebaseEnabled) {
-      unawaited(
-        _repository!
-            .updateArchiveFile(
-              id: item.id,
-              title: title,
-              url: url,
-              description: description,
-              courseId: courseId,
-            )
-            .catchError(_rememberError),
-      );
-      return;
-    }
-
     item.title = title.trim();
     item.url = url.trim();
     item.description = description.trim();
@@ -1582,7 +1686,11 @@ class SchoolStore extends ChangeNotifier {
   }) async {
     if (firebaseEnabled) {
       try {
-        await _repository!.addNotification(title: title, body: body);
+        await (_repository as ApiRepository).addNotification(
+          title: title,
+          body: body,
+        );
+        await _loadSignedInApiData();
       } catch (error) {
         _rememberError(error);
         rethrow;
@@ -1608,16 +1716,17 @@ class SchoolStore extends ChangeNotifier {
     required String body,
   }) async {
     if (firebaseEnabled) {
-      try {
-        await _repository!.updateNotification(
+      notifications.removeWhere((item) => item.id == notification.id);
+      notifications.insert(
+        0,
+        AppNotification(
           id: notification.id,
-          title: title,
-          body: body,
-        );
-      } catch (error) {
-        _rememberError(error);
-        rethrow;
-      }
+          title: title.trim(),
+          body: body.trim(),
+          createdAt: notification.createdAt,
+        ),
+      );
+      notifyListeners();
       return;
     }
 
@@ -1639,12 +1748,8 @@ class SchoolStore extends ChangeNotifier {
 
   Future<void> deleteNotification(AppNotification notification) async {
     if (firebaseEnabled) {
-      try {
-        await _repository!.deleteNotification(notification.id);
-      } catch (error) {
-        _rememberError(error);
-        rethrow;
-      }
+      notifications.removeWhere((item) => item.id == notification.id);
+      notifyListeners();
       return;
     }
 
