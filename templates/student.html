@@ -15,7 +15,10 @@
 <nav class="navbar navbar-dark bg-success">
   <div class="container-fluid">
     <span class="navbar-brand">رقمك: {{ student.phone if student else '-' }}</span>
-    <a class="btn btn-danger btn-sm" href="{{ url_for('logout') }}">تسجيل الخروج</a>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-light btn-sm" href="{{ url_for('change_password') }}">تغيير كلمة المرور</a>
+      <a class="btn btn-danger btn-sm" href="{{ url_for('logout') }}">تسجيل الخروج</a>
+    </div>
   </div>
 </nav>
 

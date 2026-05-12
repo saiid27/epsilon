@@ -16,7 +16,10 @@
 <nav class="navbar navbar-dark bg-dark">
   <div class="container-fluid">
     <span class="navbar-brand">مشرف</span>
-    <a class="btn btn-danger btn-sm" href="{{ url_for('logout') }}">تسجيل الخروج</a>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-light btn-sm" href="{{ url_for('change_password') }}">تغيير كلمة المرور</a>
+      <a class="btn btn-danger btn-sm" href="{{ url_for('logout') }}">تسجيل الخروج</a>
+    </div>
   </div>
 </nav>
 
@@ -245,7 +248,19 @@
   {% endfor %}
 
   <hr class="my-4">
-  <h5 class="mb-3">إنشاء حساب أستاذ</h5>
+  <h5 class="mb-3">إدارة الحسابات</h5>
+  {% if is_developer %}
+  <hr class="my-4">
+  <h5 class="mb-3">إنشاء حساب أدمن</h5>
+  <form class="row g-2" method="POST" action="{{ url_for('developer_create_admin') }}">
+    <div class="col-12 col-md-3"><input name="admin_username" class="form-control" placeholder="اسم الأدمن" required></div>
+    <div class="col-12 col-md-3"><input name="admin_phone" class="form-control" placeholder="رقم الهاتف" required></div>
+    <div class="col-12 col-md-3"><input name="admin_password" class="form-control" placeholder="كلمة المرور" required></div>
+    <div class="col-12 col-md-3"><button class="btn btn-dark w-100">إضافة أدمن</button></div>
+  </form>
+  {% endif %}
+
+  <h5 class="mb-3 mt-4">إنشاء حساب أستاذ</h5>
   <form class="row g-2" method="POST" action="{{ url_for('admin_create_teacher') }}">
     <div class="col-12 col-md-2"><input name="t_username" class="form-control" placeholder="الاسم" required></div>
     <div class="col-12 col-md-2"><input name="t_phone" class="form-control" placeholder="الرقم" required></div>

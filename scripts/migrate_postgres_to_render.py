@@ -16,6 +16,7 @@ TABLES = [
     "course_subjects",
     "verification_codes",
     "lessons",
+    "free_pdfs",
 ]
 
 
@@ -101,6 +102,16 @@ def fetch_rows(conn, table, cols):
     return rows
 
 
+def fetch_dict_rows(conn, table, cols):
+    col_sql = ", ".join(f'"{col}"' for col in cols)
+    order_sql = " ORDER BY id ASC" if "id" in cols else ""
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(f"SELECT {col_sql} FROM {table}{order_sql}")
+    rows = cur.fetchall()
+    cur.close()
+    return rows
+
+
 def clear_target(conn):
     cur = conn.cursor()
     cur.execute(
@@ -155,6 +166,150 @@ def reset_sequence(conn, table):
     cur.close()
 
 
+def get_target_user_id(conn, username, phone):
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id FROM users WHERE username=%s OR phone=%s ORDER BY id ASC LIMIT 1",
+        (username, phone),
+    )
+    row = cur.fetchone()
+    cur.close()
+    return row[0] if row else None
+
+
+def insert_user_if_missing(conn, row, cols):
+    existing_id = get_target_user_id(conn, row.get("username"), row.get("phone"))
+    if existing_id:
+        return existing_id, False
+
+    insert_cols = [col for col in cols if col != "id"]
+    col_sql = ", ".join(f'"{col}"' for col in insert_cols)
+    placeholders = ", ".join(["%s"] * len(insert_cols))
+    values = [row[col] for col in insert_cols]
+    cur = conn.cursor()
+    cur.execute(
+        f"INSERT INTO users ({col_sql}) VALUES ({placeholders}) RETURNING id",
+        values,
+    )
+    new_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    return new_id, True
+
+
+def insert_if_missing(conn, table, row, cols, conflict_cols):
+    insert_cols = [col for col in cols if col != "id"]
+    col_sql = ", ".join(f'"{col}"' for col in insert_cols)
+    placeholders = ", ".join(["%s"] * len(insert_cols))
+    conflict_sql = ", ".join(f'"{col}"' for col in conflict_cols)
+    values = [row[col] for col in insert_cols]
+    cur = conn.cursor()
+    cur.execute(
+        f"""
+        INSERT INTO {table} ({col_sql})
+        VALUES ({placeholders})
+        ON CONFLICT ({conflict_sql}) DO NOTHING
+        """,
+        values,
+    )
+    inserted = cur.rowcount
+    conn.commit()
+    cur.close()
+    return inserted
+
+
+def insert_free_pdf_if_missing(conn, row, cols):
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id
+        FROM free_pdfs
+        WHERE course_code=%s AND subject=%s AND title=%s AND drive_url=%s
+        LIMIT 1
+        """,
+        (row.get("course_code"), row.get("subject"), row.get("title"), row.get("drive_url")),
+    )
+    if cur.fetchone():
+        cur.close()
+        return 0
+
+    insert_cols = [col for col in cols if col != "id"]
+    col_sql = ", ".join(f'"{col}"' for col in insert_cols)
+    placeholders = ", ".join(["%s"] * len(insert_cols))
+    cur.execute(
+        f"INSERT INTO free_pdfs ({col_sql}) VALUES ({placeholders})",
+        [row[col] for col in insert_cols],
+    )
+    conn.commit()
+    cur.close()
+    return 1
+
+
+def append_only_copy(source, target):
+    user_id_map = {}
+
+    for table in TABLES:
+        if not table_exists(source, table):
+            print(f"skip {table}: not found locally")
+            continue
+        if not table_exists(target, table):
+            print(f"skip {table}: not found on target")
+            continue
+
+        source_cols = columns(source, table)
+        target_cols = columns(target, table)
+        cols = [col for col in source_cols if col in target_cols]
+        rows = fetch_dict_rows(source, table, cols)
+        inserted = 0
+
+        if table == "users":
+            for row in rows:
+                target_id, was_inserted = insert_user_if_missing(target, row, cols)
+                if row.get("id") is not None:
+                    user_id_map[row["id"]] = target_id
+                inserted += int(was_inserted)
+        elif table == "courses":
+            for row in rows:
+                inserted += insert_if_missing(target, table, row, cols, ["code"])
+        elif table == "course_subjects":
+            for row in rows:
+                inserted += insert_if_missing(target, table, row, cols, ["course_code", "subject"])
+        elif table == "lessons":
+            for row in rows:
+                if row.get("uploaded_by") in user_id_map:
+                    row["uploaded_by"] = user_id_map[row["uploaded_by"]]
+                insert_cols = [col for col in cols if col != "id"]
+                col_sql = ", ".join(f'"{col}"' for col in insert_cols)
+                placeholders = ", ".join(["%s"] * len(insert_cols))
+                cur = target.cursor()
+                cur.execute(
+                    f"INSERT INTO lessons ({col_sql}) VALUES ({placeholders})",
+                    [row[col] for col in insert_cols],
+                )
+                target.commit()
+                cur.close()
+                inserted += 1
+        elif table == "free_pdfs":
+            for row in rows:
+                inserted += insert_free_pdf_if_missing(target, row, cols)
+        elif table == "verification_codes":
+            for row in rows:
+                insert_cols = [col for col in cols if col != "id"]
+                col_sql = ", ".join(f'"{col}"' for col in insert_cols)
+                placeholders = ", ".join(["%s"] * len(insert_cols))
+                cur = target.cursor()
+                cur.execute(
+                    f"INSERT INTO verification_codes ({col_sql}) VALUES ({placeholders})",
+                    [row[col] for col in insert_cols],
+                )
+                target.commit()
+                cur.close()
+                inserted += 1
+
+        reset_sequence(target, table)
+        print(f"added {table}: {inserted} rows")
+
+
 def main():
     args = parse_args()
     source = connect_source(args)
@@ -164,23 +319,24 @@ def main():
         ensure_schema(target)
         if args.clear:
             clear_target(target)
+            for table in TABLES:
+                if not table_exists(source, table):
+                    print(f"skip {table}: not found locally")
+                    continue
 
-        for table in TABLES:
-            if not table_exists(source, table):
-                print(f"skip {table}: not found locally")
-                continue
+                source_cols = columns(source, table)
+                target_cols = columns(target, table)
+                cols = [col for col in source_cols if col in target_cols]
+                if not cols:
+                    print(f"skip {table}: no matching columns")
+                    continue
 
-            source_cols = columns(source, table)
-            target_cols = columns(target, table)
-            cols = [col for col in source_cols if col in target_cols]
-            if not cols:
-                print(f"skip {table}: no matching columns")
-                continue
-
-            rows = fetch_rows(source, table, cols)
-            count = upsert_rows(target, table, cols, rows)
-            reset_sequence(target, table)
-            print(f"copied {table}: {count} rows")
+                rows = fetch_rows(source, table, cols)
+                count = upsert_rows(target, table, cols, rows)
+                reset_sequence(target, table)
+                print(f"copied {table}: {count} rows")
+        else:
+            append_only_copy(source, target)
     finally:
         source.close()
         target.close()

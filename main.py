@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import os, random, time, sys, socket, hashlib, re
 from datetime import datetime, timedelta
 from contextlib import contextmanager
@@ -171,25 +171,52 @@ def verify_otp(phone: str, purpose: str, code: str) -> bool:
     return True
 
 # ===== Auth =====
+ADMIN_ROLES = {"admin", "developer"}
+
+def has_role(required_role):
+    current_role = session.get("role")
+    if required_role is None:
+        return True
+    if isinstance(required_role, (set, tuple, list)):
+        return current_role in required_role
+    return current_role == required_role
+
 def login_required(role=None):
     def deco(fn):
         @wraps(fn)
         def wrap(*a, **kw):
             if "user_id" not in session:
                 return redirect(url_for("login"))
-            if role and session.get("role") != role:
+            if role and not has_role(role):
                 flash("Vous nâ€™avez pas lâ€™autorisation.", "danger")
                 return redirect(url_for("home"))
             return fn(*a, **kw)
         return wrap
     return deco
 
+def admin_login_required(fn):
+    return login_required(ADMIN_ROLES)(fn)
+
+def developer_required(fn):
+    return login_required("developer")(fn)
+
+def is_developer():
+    return session.get("role") == "developer"
+
+def target_is_developer(uid):
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT role FROM users WHERE id=%s", (uid,))
+        row = cur.fetchone()
+        cur.close()
+    return bool(row and row[0] == "developer")
+
 # ===== Routes =====
 @app.route("/")
 def home():
     if "user_id" in session:
         r = session["role"]
-        return redirect(url_for("admin_dashboard" if r=="admin" else
+        return redirect(url_for("admin_dashboard" if r in ADMIN_ROLES else
                                 "teacher_dashboard" if r=="teacher" else
                                 "student_dashboard"))
     return render_template("home.html", free_pdfs=fetch_free_pdfs(active_only=True))
@@ -282,6 +309,44 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear(); return redirect(url_for("home"))
+
+@app.route("/change-password", methods=["GET", "POST"])
+@login_required()
+def change_password():
+    if request.method == "POST":
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not current_password or not new_password or not confirm_password:
+            flash("Tous les champs sont requis.", "danger")
+            return redirect(url_for("change_password"))
+        if new_password != confirm_password:
+            flash("Le nouveau mot de passe et sa confirmation ne correspondent pas.", "danger")
+            return redirect(url_for("change_password"))
+        if len(new_password) < 4:
+            flash("Le nouveau mot de passe doit contenir au moins 4 caractères.", "danger")
+            return redirect(url_for("change_password"))
+
+        with db() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT password FROM users WHERE id=%s", (session["user_id"],))
+            row = cur.fetchone()
+            if not row or row[0] != hash_password(current_password):
+                cur.close()
+                flash("Mot de passe actuel incorrect.", "danger")
+                return redirect(url_for("change_password"))
+            cur.execute(
+                "UPDATE users SET password=%s WHERE id=%s",
+                (hash_password(new_password), session["user_id"]),
+            )
+            conn.commit()
+            cur.close()
+
+        flash("Mot de passe modifié.", "success")
+        return redirect(url_for("home"))
+
+    return render_template("change_password.html")
 
 # --- Inscription Ã©tudiant: donnÃ©es de base Ø«Ù… onboarding Ø«Ù… paiement
 @app.route("/register", methods=["GET","POST"])
@@ -760,37 +825,51 @@ def reset_verify():
 
 # ===== Tableau de bord Admin =====
 @app.route("/admin")
-@login_required("admin")
+@admin_login_required
 def admin_dashboard():
     with db() as conn:
         cur = dict_cursor(conn)
-        cur.execute("""SELECT id,username,phone,role,level,subject,status,phone_verified,payment_image
-                       FROM users ORDER BY id DESC""")
+        if is_developer():
+            cur.execute("""SELECT id,username,phone,role,level,subject,status,phone_verified,payment_image
+                           FROM users ORDER BY id DESC""")
+        else:
+            cur.execute("""SELECT id,username,phone,role,level,subject,status,phone_verified,payment_image
+                           FROM users WHERE role <> 'developer' ORDER BY id DESC""")
         users = cur.fetchall(); cur.close()
     courses = fetch_courses(active_only=False)
     course_subjects = fetch_course_subjects()
     free_pdfs = fetch_free_pdfs(active_only=False)
     return render_template("admin.html", users=users, courses=courses,
-                           course_subjects=course_subjects, free_pdfs=free_pdfs)
+                           course_subjects=course_subjects, free_pdfs=free_pdfs,
+                           is_developer=is_developer())
 
 @app.route("/admin/activate/<int:uid>")
-@login_required("admin")
+@admin_login_required
 def activate_user(uid):
+    if not is_developer() and target_is_developer(uid):
+        flash("Action non autorisée.", "danger")
+        return redirect(url_for("admin_dashboard"))
     with db() as conn:
         cur = conn.cursor(); cur.execute("UPDATE users SET status='active' WHERE id=%s", (uid,))
         conn.commit(); cur.close()
     flash("Compte activÃ©.", "success"); return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/delete/<int:uid>")
-@login_required("admin")
+@admin_login_required
 def delete_user(uid):
+    if not is_developer() and target_is_developer(uid):
+        flash("Action non autorisée.", "danger")
+        return redirect(url_for("admin_dashboard"))
+    if is_developer() and uid == session.get("user_id"):
+        flash("Vous ne pouvez pas supprimer votre propre compte.", "danger")
+        return redirect(url_for("admin_dashboard"))
     with db() as conn:
         cur = conn.cursor(); cur.execute("DELETE FROM users WHERE id=%s", (uid,))
         conn.commit(); cur.close()
     flash("Compte supprimÃ©.", "warning"); return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/free-pdfs/create", methods=["POST"])
-@login_required("admin")
+@admin_login_required
 def admin_create_free_pdf():
     course_code = request.form.get("course_code","").strip()
     subject = request.form.get("subject","").strip()
@@ -824,7 +903,7 @@ def admin_create_free_pdf():
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/free-pdfs/delete/<int:pdf_id>")
-@login_required("admin")
+@admin_login_required
 def admin_delete_free_pdf(pdf_id):
     with db() as conn:
         cur = conn.cursor()
@@ -834,7 +913,7 @@ def admin_delete_free_pdf(pdf_id):
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/courses/create", methods=["POST"])
-@login_required("admin")
+@admin_login_required
 def admin_create_course():
     code = request.form.get("code","").strip().upper()
     title = request.form.get("title","").strip()
@@ -868,7 +947,7 @@ def admin_create_course():
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/courses/subjects/create", methods=["POST"])
-@login_required("admin")
+@admin_login_required
 def admin_create_course_subject():
     course_code = request.form.get("course_code","").strip()
     subject = request.form.get("subject","").strip()
@@ -895,7 +974,7 @@ def admin_create_course_subject():
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/courses/subjects/delete/<int:sid>")
-@login_required("admin")
+@admin_login_required
 def admin_delete_course_subject(sid):
     ensure_courses_table()
     with db() as conn:
@@ -906,7 +985,7 @@ def admin_delete_course_subject(sid):
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/users/<int:uid>/assign-teacher", methods=["POST"])
-@login_required("admin")
+@admin_login_required
 def admin_assign_teacher(uid):
     level = request.form.get("level","").strip()
     subject = request.form.get("subject","").strip()
@@ -925,7 +1004,7 @@ def admin_assign_teacher(uid):
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/courses/delete/<int:cid>")
-@login_required("admin")
+@admin_login_required
 def admin_delete_course(cid):
     ensure_courses_table()
     with db() as conn:
@@ -936,7 +1015,7 @@ def admin_delete_course(cid):
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/create-teacher", methods=["POST"])
-@login_required("admin")
+@admin_login_required
 def admin_create_teacher():
     t_user  = request.form.get("t_username","").strip()
     t_phone = request.form.get("t_phone","").strip()
@@ -957,6 +1036,29 @@ def admin_create_teacher():
     except IntegrityError as e:
         msg = "Nom dâ€™utilisateur dÃ©jÃ  utilisÃ©."
         if "phone" in str(e): msg = "NumÃ©ro de tÃ©lÃ©phone dÃ©jÃ  utilisÃ©."
+        flash(msg, "danger")
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/create-admin", methods=["POST"])
+@developer_required
+def developer_create_admin():
+    username = request.form.get("admin_username","").strip()
+    phone = request.form.get("admin_phone","").strip()
+    password = request.form.get("admin_password","")
+    if not username or not phone or not password:
+        flash("Nom d'utilisateur, numéro et mot de passe sont requis.", "danger")
+        return redirect(url_for("admin_dashboard"))
+    try:
+        with db() as conn:
+            cur = conn.cursor()
+            cur.execute("""INSERT INTO users (username, phone, password, role, status, phone_verified)
+                           VALUES (%s,%s,%s,'admin','active',TRUE)""",
+                        (username, phone, hash_password(password)))
+            conn.commit(); cur.close()
+        flash("Compte admin créé.", "success")
+    except IntegrityError as e:
+        msg = "Nom d'utilisateur déjà utilisé."
+        if "phone" in str(e): msg = "Numéro de téléphone déjà utilisé."
         flash(msg, "danger")
     return redirect(url_for("admin_dashboard"))
 
