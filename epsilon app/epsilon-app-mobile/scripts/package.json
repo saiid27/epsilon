@@ -1,0 +1,10 @@
+{
+  "name": "epsilon-scripts",
+  "private": true,
+  "scripts": {
+    "seed": "node seed_demo_data.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.0"
+  }
+}

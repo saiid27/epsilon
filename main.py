@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 from contextlib import contextmanager
 from functools import wraps
 from urllib.parse import parse_qs, urlparse
-from flask import Flask, Response, render_template, request, redirect, url_for, flash, session
+from flask import Flask, Response, render_template, request, redirect, url_for, flash, session, jsonify
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.utils import secure_filename
 import psycopg2
 from psycopg2 import IntegrityError
@@ -47,9 +48,17 @@ DB = dict(
     dbname=os.getenv("PGDATABASE", "school_app"),
 )
 
+def database_dsn():
+    if not DATABASE_URL:
+        return None
+    dsn = DATABASE_URL
+    if "render.com" in dsn.lower() and "sslmode=" not in dsn.lower():
+        dsn += "&sslmode=require" if "?" in dsn else "?sslmode=require"
+    return dsn
+
 @contextmanager
 def db():
-    conn = psycopg2.connect(DATABASE_URL) if DATABASE_URL else psycopg2.connect(**DB)
+    conn = psycopg2.connect(database_dsn()) if DATABASE_URL else psycopg2.connect(**DB)
     try:
         yield conn
     finally:
@@ -1218,6 +1227,324 @@ def student_dashboard():
         lessons = cur.fetchall(); cur.close()
     return render_template("student.html", lessons=lessons, level=level,
                            subjects=subjects, student=student)
+
+# ===== Mobile/API Backend =====
+api_serializer = URLSafeTimedSerializer(app.secret_key, salt="epsilon-mobile-api")
+API_TOKEN_MAX_AGE = 60 * 60 * 24 * 30
+
+def api_error(message, status=400, code=None):
+    payload = {"error": code or message, "message": message}
+    return jsonify(payload), status
+
+def api_user_payload(user):
+    return {
+        "id": str(user["id"]),
+        "name": user["username"],
+        "username": user["username"],
+        "email": user["phone"],
+        "phone": user["phone"],
+        "role": user["role"],
+        "status": user["status"],
+        "classId": user.get("level"),
+        "courseId": user.get("level"),
+        "level": user.get("level"),
+        "subject": user.get("subject"),
+        "paymentProofUrl": url_for("static", filename=f"uploads/payments/{user['payment_image']}", _external=True)
+        if user.get("payment_image") else None,
+        "createdAt": user.get("created_at").isoformat() if user.get("created_at") else None,
+    }
+
+def api_course_payload(course):
+    subjects = fetch_course_subjects(course["code"])
+    return {
+        "id": str(course["id"]),
+        "code": course["code"],
+        "title": course["title"],
+        "name": course["title"],
+        "level": course["code"],
+        "classId": course["code"],
+        "description": course.get("description") or course.get("subtitle") or "",
+        "price": course.get("badge") or "",
+        "subjects": [row["subject"] for row in subjects],
+        "isActive": bool(course.get("active")),
+        "sortOrder": course.get("sort_order") or 0,
+    }
+
+def api_lesson_payload(lesson):
+    video_url = lesson.get("video_url")
+    if not video_url and lesson.get("video_file"):
+        video_url = url_for("static", filename=f"uploads/videos/{lesson['video_file']}", _external=True)
+    pdf_url = url_for("static", filename=f"uploads/pdfs/{lesson['pdf_file']}", _external=True) if lesson.get("pdf_file") else None
+    return {
+        "id": str(lesson["id"]),
+        "title": lesson["chapter_title"],
+        "url": video_url or pdf_url or "",
+        "videoUrl": video_url,
+        "pdfUrl": pdf_url,
+        "teacherId": str(lesson["uploaded_by"]) if lesson.get("uploaded_by") else None,
+        "classId": lesson["level"],
+        "courseId": lesson["level"],
+        "level": lesson["level"],
+        "subject": lesson["subject"],
+        "isPublished": True,
+        "createdAt": lesson["uploaded_at"].isoformat() if lesson.get("uploaded_at") else None,
+    }
+
+def api_current_user():
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header.removeprefix("Bearer ").strip()
+    try:
+        data = api_serializer.loads(token, max_age=API_TOKEN_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        return None
+    user_id = data.get("user_id")
+    if not user_id:
+        return None
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("SELECT * FROM users WHERE id=%s", (user_id,))
+        user = cur.fetchone()
+        cur.close()
+    return user
+
+def api_login_required(role=None):
+    def deco(fn):
+        @wraps(fn)
+        def wrap(*args, **kwargs):
+            user = api_current_user()
+            if not user:
+                return api_error("Authentication is required.", 401, "unauthenticated")
+            if user["status"] != "active" and user["role"] not in ADMIN_ROLES:
+                return api_error("Account is not active.", 403, "account_inactive")
+            if role:
+                allowed = role if isinstance(role, (set, tuple, list)) else {role}
+                if user["role"] not in allowed:
+                    return api_error("Permission denied.", 403, "permission_denied")
+            request.api_user = user
+            return fn(*args, **kwargs)
+        return wrap
+    return deco
+
+@app.get("/api/health")
+def api_health():
+    return jsonify({"ok": True, "database": bool(DATABASE_URL), "service": "epsilon-flask"})
+
+@app.post("/api/auth/login")
+def api_login():
+    data = request.get_json(silent=True) or {}
+    identifier = (data.get("identifier") or data.get("username") or data.get("phone") or data.get("email") or "").strip()
+    password = data.get("password") or ""
+    if not identifier or not password:
+        return api_error("Identifier and password are required.", 400, "missing_credentials")
+
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""SELECT * FROM users
+                       WHERE (username=%s OR phone=%s) AND password=%s
+                       LIMIT 1""", (identifier, identifier, hash_password(password)))
+        user = cur.fetchone()
+        cur.close()
+
+    if not user:
+        return api_error("Invalid credentials.", 401, "invalid_credentials")
+    if user["status"] not in {"active", "pending"}:
+        return api_error("Account is blocked.", 403, "account_blocked")
+
+    token = api_serializer.dumps({"user_id": user["id"], "role": user["role"]})
+    return jsonify({"token": token, "user": api_user_payload(user)})
+
+@app.get("/api/me")
+@api_login_required()
+def api_me():
+    return jsonify({"user": api_user_payload(request.api_user)})
+
+@app.get("/api/users")
+@api_login_required(ADMIN_ROLES)
+def api_users():
+    with db() as conn:
+        cur = dict_cursor(conn)
+        if request.api_user["role"] == "developer":
+            cur.execute("SELECT * FROM users ORDER BY id DESC")
+        else:
+            cur.execute("SELECT * FROM users WHERE role <> 'developer' ORDER BY id DESC")
+        users = cur.fetchall()
+        cur.close()
+    return jsonify({"users": [api_user_payload(user) for user in users]})
+
+@app.patch("/api/users/<int:user_id>/status")
+@api_login_required(ADMIN_ROLES)
+def api_update_user_status(user_id):
+    data = request.get_json(silent=True) or {}
+    status = (data.get("status") or "").strip()
+    if status not in {"pending", "active", "blocked", "rejected"}:
+        return api_error("Unsupported account status.", 400, "invalid_status")
+    if request.api_user["role"] != "developer" and target_is_developer(user_id):
+        return api_error("Permission denied.", 403, "permission_denied")
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET status=%s WHERE id=%s", (status, user_id))
+        conn.commit()
+        cur.close()
+    return jsonify({"id": str(user_id), "status": status})
+
+@app.delete("/api/users/<int:user_id>")
+@api_login_required(ADMIN_ROLES)
+def api_delete_user(user_id):
+    if user_id == request.api_user["id"]:
+        return api_error("You cannot delete your own account.", 400, "cannot_delete_self")
+    if request.api_user["role"] != "developer" and target_is_developer(user_id):
+        return api_error("Permission denied.", 403, "permission_denied")
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        conn.commit()
+        cur.close()
+    return jsonify({"deleted": True, "id": str(user_id)})
+
+@app.post("/api/admin/users")
+@api_login_required(ADMIN_ROLES)
+def api_create_user():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("name") or data.get("username") or "").strip()
+    phone = (data.get("phone") or data.get("email") or "").strip()
+    password = data.get("password") or ""
+    role = (data.get("role") or "student").strip()
+    level = data.get("level") or data.get("classId") or data.get("courseId")
+    subject = data.get("subject")
+    status = data.get("status") or ("active" if role in {"teacher", "admin"} else "pending")
+    if role not in {"admin", "teacher", "student"}:
+        return api_error("Unsupported role.", 400, "invalid_role")
+    if role == "admin" and request.api_user["role"] != "developer":
+        return api_error("Only developer can create admins.", 403, "permission_denied")
+    if not username or not phone or not password:
+        return api_error("Name, phone/email and password are required.", 400, "missing_fields")
+
+    try:
+        with db() as conn:
+            cur = dict_cursor(conn)
+            cur.execute("""INSERT INTO users
+                           (username, phone, password, role, level, subject, status, phone_verified)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,TRUE)
+                           RETURNING *""",
+                        (username, phone, hash_password(password), role, level, subject, status))
+            user = cur.fetchone()
+            conn.commit()
+            cur.close()
+    except IntegrityError:
+        return api_error("Username or phone already exists.", 409, "user_exists")
+
+    return jsonify({"user": api_user_payload(user)}), 201
+
+@app.get("/api/courses")
+def api_courses():
+    courses = fetch_courses(active_only=request.args.get("all") != "1")
+    return jsonify({"courses": [api_course_payload(course) for course in courses]})
+
+@app.get("/api/classes")
+def api_classes():
+    courses = fetch_courses(active_only=True)
+    classes = [{"id": course["code"], "name": course["title"], "level": course["code"]} for course in courses]
+    return jsonify({"classes": classes})
+
+@app.get("/api/courses/<course_code>/subjects")
+def api_course_subjects(course_code):
+    return jsonify({"subjects": fetch_course_subjects(course_code)})
+
+@app.get("/api/lessons")
+@api_login_required()
+def api_lessons():
+    user = request.api_user
+    level = request.args.get("level") or request.args.get("classId") or request.args.get("courseId")
+    subject = request.args.get("subject")
+    params = []
+    clauses = []
+    if user["role"] == "student":
+        clauses.append("level=%s")
+        params.append(user["level"])
+    elif user["role"] == "teacher":
+        clauses.extend(["uploaded_by=%s", "level=%s", "subject=%s"])
+        params.extend([user["id"], user["level"], user["subject"]])
+    elif level:
+        clauses.append("level=%s")
+        params.append(level)
+    if subject:
+        clauses.append("subject=%s")
+        params.append(subject)
+    where = "WHERE " + " AND ".join(clauses) if clauses else ""
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute(f"SELECT * FROM lessons {where} ORDER BY uploaded_at DESC", params)
+        lessons = cur.fetchall()
+        cur.close()
+    return jsonify({"lessons": [api_lesson_payload(lesson) for lesson in lessons]})
+
+@app.post("/api/lessons")
+@api_login_required({"admin", "developer", "teacher"})
+def api_create_lesson():
+    data = request.get_json(silent=True) or {}
+    user = request.api_user
+    title = (data.get("title") or data.get("chapter_title") or "").strip()
+    level = data.get("level") or data.get("classId") or data.get("courseId") or user.get("level")
+    subject = data.get("subject") or user.get("subject")
+    video_url = video_embed_url(data.get("url") or data.get("videoUrl") or "")
+    if not title or not level or not subject:
+        return api_error("Title, level and subject are required.", 400, "missing_fields")
+    if user["role"] == "teacher" and (level != user.get("level") or subject != user.get("subject")):
+        return api_error("Permission denied.", 403, "permission_denied")
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""INSERT INTO lessons (subject, chapter_title, level, video_url, uploaded_by)
+                       VALUES (%s,%s,%s,%s,%s)
+                       RETURNING *""", (subject, title, level, video_url or None, user["id"]))
+        lesson = cur.fetchone()
+        conn.commit()
+        cur.close()
+    return jsonify({"lesson": api_lesson_payload(lesson)}), 201
+
+@app.patch("/api/lessons/<int:lesson_id>")
+@api_login_required({"admin", "developer", "teacher"})
+def api_update_lesson(lesson_id):
+    data = request.get_json(silent=True) or {}
+    user = request.api_user
+    title = (data.get("title") or data.get("chapter_title") or "").strip()
+    video_url = video_embed_url(data.get("url") or data.get("videoUrl") or "")
+    if not title:
+        return api_error("Title is required.", 400, "missing_title")
+    owner_clause = "AND uploaded_by=%s" if user["role"] == "teacher" else ""
+    params = [title, video_url or None, lesson_id]
+    if user["role"] == "teacher":
+        params.append(user["id"])
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute(f"""UPDATE lessons SET chapter_title=%s, video_url=%s
+                        WHERE id=%s {owner_clause}
+                        RETURNING *""", params)
+        lesson = cur.fetchone()
+        conn.commit()
+        cur.close()
+    if not lesson:
+        return api_error("Lesson not found.", 404, "not_found")
+    return jsonify({"lesson": api_lesson_payload(lesson)})
+
+@app.delete("/api/lessons/<int:lesson_id>")
+@api_login_required({"admin", "developer", "teacher"})
+def api_delete_lesson(lesson_id):
+    user = request.api_user
+    owner_clause = "AND uploaded_by=%s" if user["role"] == "teacher" else ""
+    params = [lesson_id]
+    if user["role"] == "teacher":
+        params.append(user["id"])
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute(f"DELETE FROM lessons WHERE id=%s {owner_clause} RETURNING id", params)
+        deleted = cur.fetchone()
+        conn.commit()
+        cur.close()
+    if not deleted:
+        return api_error("Lesson not found.", 404, "not_found")
+    return jsonify({"deleted": True, "id": str(lesson_id)})
 
 if __name__ == "__main__":
     try:

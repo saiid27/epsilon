@@ -1,0 +1,159 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function currentUser() {
+      return userDoc(request.auth.uid);
+    }
+
+    function hasProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isActive() {
+      return hasProfile() && currentUser().data.status == 'active';
+    }
+
+    function isAdmin() {
+      return isActive() && currentUser().data.role == 'admin';
+    }
+
+    function isTeacher() {
+      return isActive() && currentUser().data.role == 'teacher';
+    }
+
+    function isStudent() {
+      return isActive() && currentUser().data.role == 'student';
+    }
+
+    function isBootstrapAdmin() {
+      return signedIn()
+        && request.auth.token.email in [
+          'admin@demo.com',
+          'saiidfatis@gmail.com',
+          'mohamedsaiidmohameden@gmail.com'
+        ];
+    }
+
+    function ownClassId() {
+      return currentUser().data.classId;
+    }
+
+    match /users/{userId} {
+      allow get: if signedIn()
+        && (request.auth.uid == userId || isAdmin() || isBootstrapAdmin());
+      allow list: if isAdmin() || isBootstrapAdmin();
+
+      allow create: if signedIn()
+        && (
+          (
+            request.auth.uid == userId
+            && request.resource.data.role == 'student'
+            && request.resource.data.status == 'pending'
+          )
+          || (
+            isBootstrapAdmin()
+            && request.auth.uid == userId
+            && request.resource.data.role == 'admin'
+            && request.resource.data.status == 'active'
+          )
+        )
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.keys().hasOnly([
+          'name',
+          'email',
+          'role',
+          'status',
+          'classId',
+          'courseId',
+          'paymentProofUrl',
+          'paymentSenderPhone',
+          'createdAt'
+        ]);
+
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && resource.data.role == 'student'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'activeDeviceId',
+          'lastLoginAt'
+        ])
+        && request.resource.data.activeDeviceId is string
+        && request.resource.data.lastLoginAt == request.time;
+
+      allow update, delete: if isAdmin() || isBootstrapAdmin();
+    }
+
+    match /classes/{classId} {
+      allow get, list: if isActive();
+      allow create, update, delete: if isAdmin() || isBootstrapAdmin();
+    }
+
+    match /courses/{courseId} {
+      allow get, list: if resource.data.isActive == true
+        || isAdmin()
+        || (isTeacher() && resource.data.classId == ownClassId())
+        || (isStudent() && resource.data.isActive == true && resource.data.classId == ownClassId());
+
+      allow create, update, delete: if isAdmin() || isBootstrapAdmin();
+    }
+
+    match /lessons/{lessonId} {
+      allow get, list: if isAdmin()
+        || isBootstrapAdmin()
+        || (isTeacher() && resource.data.classId == ownClassId())
+        || (isStudent() && resource.data.isPublished == true && resource.data.classId == ownClassId());
+
+      allow create: if isTeacher()
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.classId == ownClassId()
+        && request.resource.data.isPublished == true
+        && request.resource.data.keys().hasOnly([
+          'title',
+          'url',
+          'teacherId',
+          'classId',
+          'courseId',
+          'subject',
+          'isPublished',
+          'createdAt'
+        ]);
+
+      allow update, delete: if isAdmin()
+        || isBootstrapAdmin()
+        || (isTeacher()
+          && resource.data.teacherId == request.auth.uid
+          && resource.data.classId == ownClassId()
+          && request.resource.data.classId == ownClassId()
+          && request.resource.data.teacherId == request.auth.uid);
+    }
+
+    match /settings/{settingId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin() || isBootstrapAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin() || isBootstrapAdmin();
+    }
+
+    match /guestVideos/{videoId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin() || isBootstrapAdmin();
+    }
+
+    match /archiveFiles/{fileId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin() || isBootstrapAdmin();
+    }
+  }
+}
