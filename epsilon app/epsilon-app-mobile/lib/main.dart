@@ -36,6 +36,11 @@ class FirebaseBootstrap {
   final String? errorMessage;
 
   static Future<FirebaseBootstrap> initialize() async {
+    unawaited(
+      PushNotifications.initialize().catchError((Object error) {
+        debugPrint('Local notifications initialization skipped: $error');
+      }),
+    );
     return const FirebaseBootstrap(isReady: true);
   }
 }
@@ -56,8 +61,6 @@ class PushNotifications {
       FlutterLocalNotificationsPlugin();
 
   static Future<void> initialize() async {
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
@@ -81,18 +84,18 @@ class PushNotifications {
     await androidNotifications?.createNotificationChannel(_androidChannel);
     await androidNotifications?.requestNotificationsPermission();
 
-    final messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(alert: true, badge: true, sound: true);
-    await messaging.setForegroundNotificationPresentationOptions(
+    final iosNotifications = _localNotifications
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
+    await iosNotifications?.requestPermissions(
       alert: true,
       badge: true,
       sound: true,
     );
-    await messaging.subscribeToTopic('all_users');
-
-    FirebaseMessaging.onMessage.listen(_showForegroundNotification);
   }
 
+  // ignore: unused_element
   static Future<void> _showForegroundNotification(RemoteMessage message) async {
     final title = message.notification?.title ?? message.data['title'];
     final body = message.notification?.body ?? message.data['body'];
@@ -319,6 +322,7 @@ class SchoolStore extends ChangeNotifier {
   StreamSubscription<Object?>? _lessonsSubscription;
   StreamSubscription<Object?>? _guestVideosSubscription;
   StreamSubscription<Object?>? _archiveFilesSubscription;
+  Timer? _notificationPollTimer;
   final List<SchoolClass> classes = [];
   final List<Course> courses = [];
   final List<Lesson> lessons = [];
@@ -513,6 +517,7 @@ class SchoolStore extends ChangeNotifier {
           ..clear()
           ..add(currentUser!);
         await _loadSignedInApiData();
+        _startNotificationPolling();
       }
       notifyListeners();
     } on Object catch (error) {
@@ -616,13 +621,74 @@ class SchoolStore extends ChangeNotifier {
       );
 
     final notificationsData = await repository.get('/api/notifications');
+    _replaceNotificationsFromApi(notificationsData, alertNew: false);
+  }
+
+  void _replaceNotificationsFromApi(
+    Map<String, dynamic> notificationsData, {
+    required bool alertNew,
+  }) {
+    final previousIds = notifications.map((notification) => notification.id).toSet();
+    final incoming = (notificationsData['notifications'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => _notificationFromApi(Map<String, dynamic>.from(item)))
+        .toList();
+
+    final shouldAlert =
+        alertNew &&
+        _notificationsLoadedOnce &&
+        currentUser?.role == UserRole.student;
+    AppNotification? newestNotification;
+    if (shouldAlert) {
+      for (final notification in incoming) {
+        if (!previousIds.contains(notification.id) &&
+            !readNotificationIds.contains(notification.id)) {
+          newestNotification = notification;
+          break;
+        }
+      }
+    }
+
     notifications
       ..clear()
-      ..addAll(
-        (notificationsData['notifications'] as List? ?? const [])
-            .whereType<Map>()
-            .map((item) => _notificationFromApi(Map<String, dynamic>.from(item))),
+      ..addAll(incoming);
+    _notificationsLoadedOnce = true;
+
+    if (newestNotification != null) {
+      unawaited(
+        PushNotifications.showLocalNotification(
+          id: newestNotification.id,
+          title: newestNotification.title,
+          body: newestNotification.body,
+        ),
       );
+      SystemSound.play(SystemSoundType.alert);
+      HapticFeedback.mediumImpact();
+    }
+  }
+
+  void _startNotificationPolling() {
+    _notificationPollTimer?.cancel();
+    if (currentUser == null) {
+      return;
+    }
+    _notificationPollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      unawaited(_pollNotifications());
+    });
+  }
+
+  Future<void> _pollNotifications() async {
+    if (!firebaseEnabled || currentUser == null) {
+      return;
+    }
+    try {
+      final repository = _repository as ApiRepository;
+      final notificationsData = await repository.get('/api/notifications');
+      _replaceNotificationsFromApi(notificationsData, alertNew: true);
+      notifyListeners();
+    } on Object catch (error) {
+      debugPrint('Notification polling skipped: $error');
+    }
   }
 
   void _rememberError(Object error) {
@@ -1026,6 +1092,7 @@ class SchoolStore extends ChangeNotifier {
     unawaited(_lessonsSubscription?.cancel() ?? Future<void>.value());
     unawaited(_guestVideosSubscription?.cancel() ?? Future<void>.value());
     unawaited(_archiveFilesSubscription?.cancel() ?? Future<void>.value());
+    _notificationPollTimer?.cancel();
     super.dispose();
   }
 
@@ -1145,6 +1212,7 @@ class SchoolStore extends ChangeNotifier {
           ..clear()
           ..add(currentUser!);
         await _loadSignedInApiData();
+        _startNotificationPolling();
         return true;
       } on Object catch (error) {
         lastError = error.toString();
@@ -1177,6 +1245,8 @@ class SchoolStore extends ChangeNotifier {
     currentUser = null;
     users.clear();
     lessons.clear();
+    _notificationPollTimer?.cancel();
+    _notificationPollTimer = null;
     notifyListeners();
   }
 
@@ -1716,6 +1786,7 @@ class SchoolStore extends ChangeNotifier {
           body: body,
         );
         await _loadSignedInApiData();
+        notifyListeners();
       } catch (error) {
         _rememberError(error);
         rethrow;
@@ -1741,16 +1812,12 @@ class SchoolStore extends ChangeNotifier {
     required String body,
   }) async {
     if (firebaseEnabled) {
-      notifications.removeWhere((item) => item.id == notification.id);
-      notifications.insert(
-        0,
-        AppNotification(
-          id: notification.id,
-          title: title.trim(),
-          body: body.trim(),
-          createdAt: notification.createdAt,
-        ),
+      await (_repository as ApiRepository).updateNotification(
+        id: notification.id,
+        title: title,
+        body: body,
       );
+      await _loadSignedInApiData();
       notifyListeners();
       return;
     }
@@ -1773,7 +1840,8 @@ class SchoolStore extends ChangeNotifier {
 
   Future<void> deleteNotification(AppNotification notification) async {
     if (firebaseEnabled) {
-      notifications.removeWhere((item) => item.id == notification.id);
+      await (_repository as ApiRepository).deleteNotification(notification.id);
+      await _loadSignedInApiData();
       notifyListeners();
       return;
     }

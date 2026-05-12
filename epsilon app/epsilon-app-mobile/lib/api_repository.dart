@@ -202,6 +202,18 @@ class ApiRepository {
     await post('/api/notifications', {'title': title, 'body': body});
   }
 
+  Future<void> updateNotification({
+    required String id,
+    required String title,
+    required String body,
+  }) async {
+    await patch('/api/notifications/$id', {'title': title, 'body': body});
+  }
+
+  Future<void> deleteNotification(String id) async {
+    await delete('/api/notifications/$id');
+  }
+
   Uri _uri(String path) {
     final root = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)

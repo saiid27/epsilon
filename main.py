@@ -540,6 +540,14 @@ def ensure_courses_table():
             )
         """)
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                body TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_lessons_level_subject
             ON lessons (level, subject, uploaded_at DESC)
         """)
@@ -550,6 +558,10 @@ def ensure_courses_table():
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_free_pdfs_course_subject
             ON free_pdfs (course_code, subject, sort_order ASC, id DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_notifications_created_at
+            ON notifications (created_at DESC)
         """)
         if not table_exists:
             for index, course in enumerate(COURSES, start=1):
@@ -1689,20 +1701,89 @@ def api_archive_files():
 @app.get("/api/notifications")
 @api_login_required()
 def api_notifications():
-    return jsonify({"notifications": []})
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""SELECT id, title, body, created_at
+                       FROM notifications
+                       ORDER BY created_at DESC
+                       LIMIT 100""")
+        rows = cur.fetchall()
+        cur.close()
+    return jsonify({
+        "notifications": [
+            {
+                "id": str(row["id"]),
+                "title": row["title"],
+                "body": row["body"],
+                "createdAt": row["created_at"].isoformat() if row.get("created_at") else None,
+            }
+            for row in rows
+        ]
+    })
 
 @app.post("/api/notifications")
 @api_login_required(ADMIN_ROLES)
 def api_add_notification():
     data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()
+    body = (data.get("body") or "").strip()
+    if not title or not body:
+        return api_error("Title and body are required.", 400, "missing_fields")
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""INSERT INTO notifications (title, body)
+                       VALUES (%s,%s)
+                       RETURNING id, title, body, created_at""", (title, body))
+        row = cur.fetchone()
+        conn.commit()
+        cur.close()
     return jsonify({
         "notification": {
-            "id": str(int(time.time() * 1000)),
-            "title": (data.get("title") or "").strip(),
-            "body": (data.get("body") or "").strip(),
-            "createdAt": datetime.utcnow().isoformat(),
+            "id": str(row["id"]),
+            "title": row["title"],
+            "body": row["body"],
+            "createdAt": row["created_at"].isoformat() if row.get("created_at") else None,
         }
     }), 201
+
+@app.patch("/api/notifications/<int:notification_id>")
+@api_login_required(ADMIN_ROLES)
+def api_update_notification(notification_id):
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()
+    body = (data.get("body") or "").strip()
+    if not title or not body:
+        return api_error("Title and body are required.", 400, "missing_fields")
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""UPDATE notifications
+                       SET title=%s, body=%s
+                       WHERE id=%s
+                       RETURNING id, title, body, created_at""",
+                    (title, body, notification_id))
+        row = cur.fetchone()
+        conn.commit()
+        cur.close()
+    if not row:
+        return api_error("Notification not found.", 404, "not_found")
+    return jsonify({
+        "notification": {
+            "id": str(row["id"]),
+            "title": row["title"],
+            "body": row["body"],
+            "createdAt": row["created_at"].isoformat() if row.get("created_at") else None,
+        }
+    })
+
+@app.delete("/api/notifications/<int:notification_id>")
+@api_login_required(ADMIN_ROLES)
+def api_delete_notification(notification_id):
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM notifications WHERE id=%s", (notification_id,))
+        conn.commit()
+        cur.close()
+    return jsonify({"deleted": True, "id": str(notification_id)})
 
 if __name__ == "__main__":
     try:
