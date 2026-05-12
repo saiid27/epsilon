@@ -580,6 +580,30 @@ class SchoolStore extends ChangeNotifier {
           .where((candidate) => candidate.id == user.id)
           .cast<AppUser?>()
           .firstOrNull;
+    } else {
+      final allowedCourseId = user.courseId ?? user.classId;
+      if (allowedCourseId != null && allowedCourseId.trim().isNotEmpty) {
+        final visibleCourses = courses
+            .where(
+              (course) =>
+                  course.id == allowedCourseId ||
+                  course.classId == allowedCourseId,
+            )
+            .toList();
+        final visibleClasses = classes
+            .where(
+              (schoolClass) =>
+                  schoolClass.id == allowedCourseId ||
+                  schoolClass.level == allowedCourseId,
+            )
+            .toList();
+        courses
+          ..clear()
+          ..addAll(visibleCourses);
+        classes
+          ..clear()
+          ..addAll(visibleClasses);
+      }
     }
 
     final lessonsData = await repository.get('/api/lessons');
@@ -967,6 +991,7 @@ class SchoolStore extends ChangeNotifier {
   UserRole _roleFromString(String? value) {
     return switch (value) {
       'admin' => UserRole.admin,
+      'developer' => UserRole.admin,
       'teacher' => UserRole.teacher,
       _ => UserRole.student,
     };
