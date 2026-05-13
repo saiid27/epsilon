@@ -92,6 +92,38 @@ def remove_upload(folder, filename):
     except OSError as e:
         print("Upload cleanup error:", e)
 
+def delete_user_with_teacher_lessons(user_id):
+    uploads_to_remove = []
+    lessons_deleted = 0
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("SELECT id, role FROM users WHERE id=%s", (user_id,))
+        user = cur.fetchone()
+        if not user:
+            cur.close()
+            return {"user_deleted": False, "lessons_deleted": 0}
+
+        if user["role"] == "teacher":
+            cur.execute("SELECT video_file, pdf_file FROM lessons WHERE uploaded_by=%s", (user_id,))
+            lessons = cur.fetchall()
+            uploads_to_remove = [
+                (lesson.get("video_file"), lesson.get("pdf_file"))
+                for lesson in lessons
+            ]
+            cur.execute("DELETE FROM lessons WHERE uploaded_by=%s", (user_id,))
+            lessons_deleted = cur.rowcount
+
+        cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        user_deleted = cur.rowcount > 0
+        conn.commit()
+        cur.close()
+
+    for video_file, pdf_file in uploads_to_remove:
+        remove_upload(VID_DIR, video_file)
+        remove_upload(PDF_DIR, pdf_file)
+
+    return {"user_deleted": user_deleted, "lessons_deleted": lessons_deleted}
+
 def google_drive_preview_url(url):
     if not url:
         return ""
@@ -892,10 +924,12 @@ def delete_user(uid):
     if is_developer() and uid == session.get("user_id"):
         flash("Vous ne pouvez pas supprimer votre propre compte.", "danger")
         return redirect(url_for("admin_dashboard"))
-    with db() as conn:
-        cur = conn.cursor(); cur.execute("DELETE FROM users WHERE id=%s", (uid,))
-        conn.commit(); cur.close()
-    flash("Compte supprimÃ©.", "warning"); return redirect(url_for("admin_dashboard"))
+    result = delete_user_with_teacher_lessons(uid)
+    if result["lessons_deleted"]:
+        flash(f"Compte supprimÃ© avec {result['lessons_deleted']} leÃ§on(s).", "warning")
+    else:
+        flash("Compte supprimÃ©.", "warning")
+    return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/free-pdfs/create", methods=["POST"])
 @admin_login_required
@@ -1420,12 +1454,12 @@ def api_delete_user(user_id):
         return api_error("You cannot delete your own account.", 400, "cannot_delete_self")
     if request.api_user["role"] != "developer" and target_is_developer(user_id):
         return api_error("Permission denied.", 403, "permission_denied")
-    with db() as conn:
-        cur = conn.cursor()
-        cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
-        conn.commit()
-        cur.close()
-    return jsonify({"deleted": True, "id": str(user_id)})
+    result = delete_user_with_teacher_lessons(user_id)
+    return jsonify({
+        "deleted": result["user_deleted"],
+        "id": str(user_id),
+        "lessonsDeleted": result["lessons_deleted"],
+    })
 
 @app.post("/api/admin/users")
 @api_login_required(ADMIN_ROLES)
