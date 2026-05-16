@@ -198,6 +198,75 @@
   </div>
 
   <hr class="my-4">
+  <h5 class="mb-3">رفع الدروس</h5>
+  <div class="card p-3 shadow-sm mb-3">
+    <form method="POST" action="{{ url_for('admin_create_lesson') }}" enctype="multipart/form-data" class="row g-2">
+      <div class="col-12 col-md-3">
+        <select name="level" id="adminLessonCourse" class="form-select" required>
+          <option value="">اختر الدورة</option>
+          {% for course in courses %}
+            <option value="{{ course.code }}">{{ course.title }} - {{ course.code }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <select name="subject" id="adminLessonSubject" class="form-select" required>
+          <option value="">اختر المادة</option>
+          {% for item in course_subjects %}
+            <option value="{{ item.subject }}" data-course="{{ item.course_code }}">{{ item.course_code }} - {{ item.subject }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <input name="chapter_title" class="form-control" placeholder="عنوان الدرس" required>
+      </div>
+      <div class="col-12">
+        <input type="url" name="video_url" class="form-control" placeholder="رابط الفيديو اختياري: YouTube أو Google Drive">
+      </div>
+      <div class="col-12 col-md-5">
+        <label class="form-label">ملف فيديو اختياري</label>
+        <input type="file" name="video" class="form-control" accept="video/*">
+      </div>
+      <div class="col-12 col-md-5">
+        <label class="form-label">ملف PDF اختياري</label>
+        <input type="file" name="pdf" class="form-control" accept="application/pdf">
+      </div>
+      <div class="col-12 col-md-2 d-flex align-items-end">
+        <button class="btn btn-success w-100">إضافة</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle text-center bg-white">
+      <thead class="table-dark">
+        <tr><th>ID</th><th>الدورة</th><th>المادة</th><th>العنوان</th><th>الرافع</th><th>التاريخ</th><th>حذف</th></tr>
+      </thead>
+      <tbody>
+        {% for lesson in lessons %}
+        <tr>
+          <td>{{ lesson.id }}</td>
+          <td>{{ lesson.level }}</td>
+          <td>{{ lesson.subject }}</td>
+          <td>{{ lesson.chapter_title }}</td>
+          <td>{{ lesson.uploader_name or '-' }}</td>
+          <td>{{ lesson.uploaded_at or '-' }}</td>
+          <td>
+            <form method="POST"
+                  action="{{ url_for('admin_delete_lesson', lesson_id=lesson.id) }}"
+                  onsubmit="return confirm('حذف هذا الدرس؟');">
+              <button class="btn btn-danger btn-sm">حذف</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">لا توجد دروس بعد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <hr class="my-4">
   <div class="card p-3 shadow-sm mb-3">
     <h5 class="mb-3">PDF مجاني في الصفحة الرئيسية</h5>
     <form method="POST" action="{{ url_for('admin_create_free_pdf') }}" class="row g-2">
@@ -290,6 +359,8 @@
   const subjectSelect = document.getElementById('teacherSubject');
   const freePdfCourse = document.getElementById('freePdfCourse');
   const freePdfSubject = document.getElementById('freePdfSubject');
+  const adminLessonCourse = document.getElementById('adminLessonCourse');
+  const adminLessonSubject = document.getElementById('adminLessonSubject');
   function filterSubjects(courseInput, subjectInput) {
     const course = courseInput.value;
     [...subjectInput.options].forEach((option) => {
@@ -308,6 +379,10 @@
   if (freePdfCourse && freePdfSubject) {
     freePdfCourse.addEventListener('change', () => filterSubjects(freePdfCourse, freePdfSubject));
     filterSubjects(freePdfCourse, freePdfSubject);
+  }
+  if (adminLessonCourse && adminLessonSubject) {
+    adminLessonCourse.addEventListener('change', () => filterSubjects(adminLessonCourse, adminLessonSubject));
+    filterSubjects(adminLessonCourse, adminLessonSubject);
   }
 </script>
 </body>

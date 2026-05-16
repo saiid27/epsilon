@@ -896,12 +896,18 @@ def admin_dashboard():
         else:
             cur.execute("""SELECT id,username,phone,role,level,subject,status,phone_verified,payment_image
                            FROM users WHERE role <> 'developer' ORDER BY id DESC""")
-        users = cur.fetchall(); cur.close()
+        users = cur.fetchall()
+        cur.execute("""SELECT l.*, u.username AS uploader_name
+                       FROM lessons l
+                       LEFT JOIN users u ON u.id = l.uploaded_by
+                       ORDER BY l.uploaded_at DESC, l.id DESC""")
+        lessons = cur.fetchall(); cur.close()
     courses = fetch_courses(active_only=False)
     course_subjects = fetch_course_subjects()
     free_pdfs = fetch_free_pdfs(active_only=False)
     return render_template("admin.html", users=users, courses=courses,
                            course_subjects=course_subjects, free_pdfs=free_pdfs,
+                           lessons=lessons,
                            is_developer=is_developer())
 
 @app.route("/admin/activate/<int:uid>")
@@ -929,6 +935,73 @@ def delete_user(uid):
         flash(f"Compte supprimÃ© avec {result['lessons_deleted']} leÃ§on(s).", "warning")
     else:
         flash("Compte supprimÃ©.", "warning")
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/lessons/create", methods=["POST"])
+@admin_login_required
+def admin_create_lesson():
+    level = request.form.get("level","").strip()
+    subject = request.form.get("subject","").strip()
+    chapter = request.form.get("chapter_title","").strip()
+    vfile = request.files.get("video")
+    pfile = request.files.get("pdf")
+    vurl = video_embed_url(request.form.get("video_url","")) or None
+
+    if not level or not subject or not chapter:
+        flash("La formation, la matiere et le titre sont requis.", "danger")
+        return redirect(url_for("admin_dashboard"))
+
+    allowed_subjects = {row["subject"] for row in fetch_course_subjects(level)}
+    if subject not in allowed_subjects:
+        flash("Matiere invalide pour cette formation.", "danger")
+        return redirect(url_for("admin_dashboard"))
+
+    vname = None
+    pname = None
+    if vfile and vfile.filename:
+        if not allowed(vfile.filename, VIDEO_EXT):
+            flash("Fichier video non autorise.", "danger")
+            return redirect(url_for("admin_dashboard"))
+        base = secure_filename(vfile.filename)
+        vname = f"admin_{session['user_id']}_{int(time.time())}_{base}"
+        vfile.save(os.path.join(VID_DIR, vname))
+    if pfile and pfile.filename:
+        if not allowed(pfile.filename, PDF_EXT):
+            if vname:
+                remove_upload(VID_DIR, vname)
+            flash("Fichier PDF non autorise.", "danger")
+            return redirect(url_for("admin_dashboard"))
+        base = secure_filename(pfile.filename)
+        pname = f"admin_{session['user_id']}_{int(time.time())}_{base}"
+        pfile.save(os.path.join(PDF_DIR, pname))
+
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("""INSERT INTO lessons
+                       (subject, chapter_title, level, video_file, pdf_file, video_url, uploaded_by)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+                    (subject, chapter, level, vname, pname, vurl, session["user_id"]))
+        conn.commit(); cur.close()
+    flash("Lecon ajoutee.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/lessons/delete/<int:lesson_id>", methods=["POST"])
+@admin_login_required
+def admin_delete_lesson(lesson_id):
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("SELECT video_file, pdf_file FROM lessons WHERE id=%s", (lesson_id,))
+        lesson = cur.fetchone()
+        if not lesson:
+            cur.close()
+            flash("Lecon introuvable.", "danger")
+            return redirect(url_for("admin_dashboard"))
+        cur.execute("DELETE FROM lessons WHERE id=%s", (lesson_id,))
+        conn.commit(); cur.close()
+
+    remove_upload(VID_DIR, lesson["video_file"])
+    remove_upload(PDF_DIR, lesson["pdf_file"])
+    flash("Lecon supprimee.", "warning")
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/free-pdfs/create", methods=["POST"])
