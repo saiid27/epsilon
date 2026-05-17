@@ -7890,6 +7890,7 @@ String videoPlayerHtml(String url) {
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     html, body {
       margin: 0;
@@ -7898,16 +7899,66 @@ String videoPlayerHtml(String url) {
       background: #000;
       overflow: hidden;
     }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
     video {
       width: 100%;
       height: 100%;
       background: #000;
       object-fit: contain;
     }
+    #message {
+      position: absolute;
+      inset: auto 16px 28px 16px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, .72);
+      color: #fff;
+      font-size: 14px;
+      line-height: 1.5;
+      text-align: center;
+      display: none;
+      z-index: 2;
+    }
   </style>
 </head>
 <body>
-  <video controls playsinline preload="metadata" src="$escapedUrl"></video>
+  <video id="player" controls playsinline webkit-playsinline preload="metadata" controlsList="nodownload"></video>
+  <div id="message">تعذر تشغيل الفيديو داخل التطبيق. تحقق من رابط Bunny أو صيغة الفيديو.</div>
+  <script>
+    const source = "$escapedUrl";
+    const player = document.getElementById('player');
+    const message = document.getElementById('message');
+    const showError = () => { message.style.display = 'block'; };
+
+    player.addEventListener('loadeddata', () => { message.style.display = 'none'; });
+    player.addEventListener('error', showError);
+
+    if (source.toLowerCase().includes('.m3u8')) {
+      if (player.canPlayType('application/vnd.apple.mpegurl')) {
+        player.src = source;
+      } else if (window.Hls && Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+        });
+        hls.loadSource(source);
+        hls.attachMedia(player);
+        hls.on(Hls.Events.ERROR, function (_, data) {
+          if (data && data.fatal) showError();
+        });
+      } else {
+        showError();
+      }
+    } else {
+      player.src = source;
+    }
+  </script>
 </body>
 </html>
 ''';
