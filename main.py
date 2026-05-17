@@ -521,6 +521,7 @@ def ensure_courses_table():
         cur.execute("SELECT to_regclass('public.courses')")
         table_exists = cur.fetchone()[0] is not None
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS subject VARCHAR(80)")
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_sender_phone VARCHAR(30)")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS courses (
                 id SERIAL PRIMARY KEY,
@@ -580,6 +581,13 @@ def ensure_courses_table():
             )
         """)
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key VARCHAR(80) PRIMARY KEY,
+                value TEXT NOT NULL DEFAULT '',
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_lessons_level_subject
             ON lessons (level, subject, uploaded_at DESC)
         """)
@@ -619,6 +627,48 @@ def ensure_courses_table():
                     """, (course_code, subject, index))
         conn.commit()
         cur.close()
+
+def fetch_app_settings():
+    defaults = {
+        "paymentNumber": os.getenv("PAYMENT_NUMBER", "22334455"),
+        "paymentAmount": os.getenv("PAYMENT_AMOUNT", "غير محدد"),
+    }
+    try:
+        ensure_courses_table()
+        with db() as conn:
+            cur = dict_cursor(conn)
+            cur.execute("SELECT key, value FROM app_settings")
+            rows = cur.fetchall()
+            cur.close()
+        settings = defaults.copy()
+        settings.update({row["key"]: row["value"] for row in rows})
+        return settings
+    except psycopg2.OperationalError as e:
+        print("Database unavailable, using default settings:", e)
+        return defaults
+
+def save_app_settings(values):
+    ensure_courses_table()
+    allowed_keys = {"paymentNumber", "paymentAmount"}
+    cleaned = {
+        key: str(value).strip()
+        for key, value in values.items()
+        if key in allowed_keys and value is not None
+    }
+    if not cleaned:
+        return fetch_app_settings()
+    with db() as conn:
+        cur = conn.cursor()
+        for key, value in cleaned.items():
+            cur.execute("""
+                INSERT INTO app_settings (key, value, updated_at)
+                VALUES (%s,%s,CURRENT_TIMESTAMP)
+                ON CONFLICT (key)
+                DO UPDATE SET value=EXCLUDED.value, updated_at=CURRENT_TIMESTAMP
+            """, (key, value))
+        conn.commit()
+        cur.close()
+    return fetch_app_settings()
 
 def fetch_courses(active_only=True):
     try:
@@ -1376,6 +1426,7 @@ def api_user_payload(user):
         "courseId": user.get("level"),
         "level": user.get("level"),
         "subject": user.get("subject"),
+        "paymentSenderPhone": user.get("payment_sender_phone"),
         "paymentProofUrl": url_for("static", filename=f"uploads/payments/{user['payment_image']}", _external=True)
         if user.get("payment_image") else None,
         "createdAt": user.get("created_at").isoformat() if user.get("created_at") else None,
@@ -1544,6 +1595,7 @@ def api_create_user():
     role = (data.get("role") or "student").strip()
     level = data.get("level") or data.get("classId") or data.get("courseId")
     subject = data.get("subject")
+    payment_sender_phone = (data.get("paymentSenderPhone") or "").strip() or None
     status = data.get("status") or ("active" if role in {"teacher", "admin"} else "pending")
     if role not in {"admin", "teacher", "student"}:
         return api_error("Unsupported role.", 400, "invalid_role")
@@ -1556,10 +1608,10 @@ def api_create_user():
         with db() as conn:
             cur = dict_cursor(conn)
             cur.execute("""INSERT INTO users
-                           (username, phone, password, role, level, subject, status, phone_verified)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,TRUE)
+                           (username, phone, password, role, level, subject, payment_sender_phone, status, phone_verified)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,TRUE)
                            RETURNING *""",
-                        (username, phone, hash_password(password), role, level, subject, status))
+                        (username, phone, hash_password(password), role, level, subject, payment_sender_phone, status))
             user = cur.fetchone()
             conn.commit()
             cur.close()
@@ -1575,16 +1627,17 @@ def api_register_student():
     phone = (data.get("phone") or data.get("email") or "").strip()
     password = data.get("password") or ""
     level = data.get("level") or data.get("classId") or data.get("courseId")
+    payment_sender_phone = (data.get("paymentSenderPhone") or "").strip() or None
     if not username or not phone or not password or not level:
         return api_error("Name, phone/email, password and course are required.", 400, "missing_fields")
     try:
         with db() as conn:
             cur = dict_cursor(conn)
             cur.execute("""INSERT INTO users
-                           (username, phone, password, role, level, status, phone_verified)
-                           VALUES (%s,%s,%s,'student',%s,'pending',TRUE)
+                           (username, phone, password, role, level, payment_sender_phone, status, phone_verified)
+                           VALUES (%s,%s,%s,'student',%s,%s,'pending',TRUE)
                            RETURNING *""",
-                        (username, phone, hash_password(password), level))
+                        (username, phone, hash_password(password), level, payment_sender_phone))
             user = cur.fetchone()
             conn.commit()
             cur.close()
@@ -1675,6 +1728,20 @@ def api_classes():
     courses = fetch_courses(active_only=True)
     classes = [{"id": course["code"], "name": course["title"], "level": course["code"]} for course in courses]
     return jsonify({"classes": classes})
+
+@app.get("/api/settings")
+def api_settings():
+    return jsonify({"settings": fetch_app_settings()})
+
+@app.patch("/api/settings")
+@api_login_required(ADMIN_ROLES)
+def api_update_settings():
+    data = request.get_json(silent=True) or {}
+    settings = save_app_settings({
+        "paymentNumber": data.get("paymentNumber"),
+        "paymentAmount": data.get("paymentAmount"),
+    })
+    return jsonify({"settings": settings})
 
 @app.post("/api/classes")
 @api_login_required(ADMIN_ROLES)

@@ -528,6 +528,9 @@ class SchoolStore extends ChangeNotifier {
 
   Future<void> _loadPublicApiData() async {
     final repository = _repository as ApiRepository;
+    final settingsData = await repository.settings();
+    _applySettingsFromApi(settingsData['settings']);
+
     final classesData = await repository.get('/api/classes');
     classes
       ..clear()
@@ -565,12 +568,28 @@ class SchoolStore extends ChangeNotifier {
       );
   }
 
+  void _applySettingsFromApi(Object? settings) {
+    if (settings is Map) {
+      final number = settings['paymentNumber'];
+      if (number is String && number.trim().isNotEmpty) {
+        paymentNumber = number;
+      }
+      final amount = settings['paymentAmount'];
+      if (amount is String && amount.trim().isNotEmpty) {
+        paymentAmount = amount;
+      }
+      notifyListeners();
+    }
+  }
+
   Future<void> _loadSignedInApiData() async {
     final repository = _repository as ApiRepository;
     final user = currentUser;
     if (user == null) {
       return;
     }
+
+    await _loadPublicApiData();
 
     if (user.role == UserRole.admin) {
       final usersData = await repository.get('/api/users');
@@ -628,7 +647,9 @@ class SchoolStore extends ChangeNotifier {
     Map<String, dynamic> notificationsData, {
     required bool alertNew,
   }) {
-    final previousIds = notifications.map((notification) => notification.id).toSet();
+    final previousIds = notifications
+        .map((notification) => notification.id)
+        .toSet();
     final incoming = (notificationsData['notifications'] as List? ?? const [])
         .whereType<Map>()
         .map((item) => _notificationFromApi(Map<String, dynamic>.from(item)))
@@ -969,7 +990,10 @@ class SchoolStore extends ChangeNotifier {
   AppUser _userFromApi(Map<String, dynamic> data) {
     return AppUser(
       id: '${data['id'] ?? ''}',
-      name: (data['name'] as String?) ?? (data['username'] as String?) ?? 'مستخدم',
+      name:
+          (data['name'] as String?) ??
+          (data['username'] as String?) ??
+          'مستخدم',
       email: (data['email'] as String?) ?? (data['phone'] as String?) ?? '',
       password: '',
       role: _roleFromString(data['role'] as String?),
@@ -1020,7 +1044,8 @@ class SchoolStore extends ChangeNotifier {
           '',
       teacherId: '${data['teacherId'] ?? ''}',
       classId: (data['classId'] as String?) ?? (data['level'] as String?) ?? '',
-      courseId: (data['courseId'] as String?) ?? (data['level'] as String?) ?? '',
+      courseId:
+          (data['courseId'] as String?) ?? (data['level'] as String?) ?? '',
       subject: (data['subject'] as String?) ?? 'مادة عامة',
       createdAt: _dateFromApi(data['createdAt']),
       isPublished: (data['isPublished'] as bool?) ?? true,
@@ -1525,6 +1550,12 @@ class SchoolStore extends ChangeNotifier {
     if (firebaseEnabled) {
       paymentNumber = value.trim();
       notifyListeners();
+      unawaited(
+        (_repository as ApiRepository)
+            .updateSettings(paymentNumber: paymentNumber)
+            .then((data) => _applySettingsFromApi(data['settings']))
+            .catchError(_rememberError),
+      );
       return;
     }
     paymentNumber = value.trim();
@@ -1535,6 +1566,12 @@ class SchoolStore extends ChangeNotifier {
     if (firebaseEnabled) {
       paymentAmount = value.trim();
       notifyListeners();
+      unawaited(
+        (_repository as ApiRepository)
+            .updateSettings(paymentAmount: paymentAmount)
+            .then((data) => _applySettingsFromApi(data['settings']))
+            .catchError(_rememberError),
+      );
       return;
     }
     paymentAmount = value.trim();
@@ -1591,7 +1628,11 @@ class SchoolStore extends ChangeNotifier {
   void deleteClass(SchoolClass schoolClass) {
     if (firebaseEnabled) {
       deleteCourse(
-        Course(id: schoolClass.id, title: schoolClass.name, classId: schoolClass.id),
+        Course(
+          id: schoolClass.id,
+          title: schoolClass.name,
+          classId: schoolClass.id,
+        ),
       );
       return;
     }
@@ -1663,11 +1704,7 @@ class SchoolStore extends ChangeNotifier {
       }
       unawaited(
         (_repository as ApiRepository)
-            .updateLesson(
-              lessonId: lesson.id,
-              title: title,
-              url: url,
-            )
+            .updateLesson(lessonId: lesson.id, title: title, url: url)
             .then((_) => _loadSignedInApiData())
             .catchError(_rememberError),
       );
@@ -2755,10 +2792,7 @@ class PrivacyPolicyPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF),
-      appBar: const EpsilonAppBar(
-        title: 'سياسة الخصوصية',
-        showLogout: false,
-      ),
+      appBar: const EpsilonAppBar(title: 'سياسة الخصوصية', showLogout: false),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
@@ -2883,6 +2917,7 @@ class _PolicyLinkButton extends StatelessWidget {
     );
   }
 }
+
 class ContactUsPage extends StatelessWidget {
   const ContactUsPage({super.key});
 
@@ -7654,15 +7689,21 @@ class SecureContentViewerPage extends StatefulWidget {
 class _SecureContentViewerPageState extends State<SecureContentViewerPage> {
   static const secureChannel = MethodChannel('epsilon/secure_window');
   late final WebViewController controller;
+  late final Uri contentUri;
 
   @override
   void initState() {
     super.initState();
     enableSecureWindow();
+    contentUri = Uri.parse(toDrivePreviewUrl(widget.url));
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
-      ..loadRequest(Uri.parse(toDrivePreviewUrl(widget.url)));
+      ..loadRequest(contentUri);
+
+    if (Platform.isAndroid && widget.kind == SecureContentKind.video) {
+      unawaited(openExternally());
+    }
   }
 
   @override
@@ -7687,11 +7728,35 @@ class _SecureContentViewerPageState extends State<SecureContentViewerPage> {
     }
   }
 
+  Future<void> openExternally() async {
+    try {
+      await launchUrl(contentUri, mode: LaunchMode.externalApplication);
+    } on Object catch (error) {
+      debugPrint('Could not open content externally: $error');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: EpsilonAppBar(title: widget.title, showLogout: false),
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(
+          widget.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'فتح خارج التطبيق',
+            onPressed: () => unawaited(openExternally()),
+            icon: const Icon(Icons.open_in_new_rounded),
+          ),
+        ],
+      ),
       body: WebViewWidget(controller: controller),
     );
   }

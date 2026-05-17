@@ -15,10 +15,12 @@ class ApiException implements Exception {
 
 class ApiRepository {
   ApiRepository({String? baseUrl})
-    : baseUrl = baseUrl ?? const String.fromEnvironment(
-        'EPSILON_API_URL',
-        defaultValue: 'https://epsilon-app.onrender.com',
-      );
+    : baseUrl =
+          baseUrl ??
+          const String.fromEnvironment(
+            'EPSILON_API_URL',
+            defaultValue: 'https://epsilon-app.onrender.com',
+          );
 
   final String baseUrl;
   static const _tokenKey = 'epsilon_api_token';
@@ -119,6 +121,24 @@ class ApiRepository {
     }, authenticated: false);
   }
 
+  Future<Map<String, dynamic>> settings() {
+    return get('/api/settings');
+  }
+
+  Future<Map<String, dynamic>> updateSettings({
+    String? paymentNumber,
+    String? paymentAmount,
+  }) {
+    final body = <String, dynamic>{};
+    if (paymentNumber != null) {
+      body['paymentNumber'] = paymentNumber;
+    }
+    if (paymentAmount != null) {
+      body['paymentAmount'] = paymentAmount;
+    }
+    return patch('/api/settings', body);
+  }
+
   Future<Map<String, dynamic>> createUser({
     required String name,
     required String email,
@@ -198,7 +218,10 @@ class ApiRepository {
     await delete('/api/lessons/$lessonId');
   }
 
-  Future<void> addNotification({required String title, required String body}) async {
+  Future<void> addNotification({
+    required String title,
+    required String body,
+  }) async {
     await post('/api/notifications', {'title': title, 'body': body});
   }
 
