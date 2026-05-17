@@ -12,6 +12,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -7691,14 +7692,21 @@ class SecureContentViewerPage extends StatefulWidget {
 
 class _SecureContentViewerPageState extends State<SecureContentViewerPage> {
   static const secureChannel = MethodChannel('epsilon/secure_window');
-  late final WebViewController controller;
   late final String contentUrl;
+  late final bool useNativeVideo;
+  WebViewController? controller;
 
   @override
   void initState() {
     super.initState();
     enableSecureWindow();
     contentUrl = toVideoViewerUrl(widget.url);
+    useNativeVideo =
+        widget.kind == SecureContentKind.video && isDirectVideoUrl(contentUrl);
+    if (useNativeVideo) {
+      return;
+    }
+
     late final PlatformWebViewControllerCreationParams params;
     if (WebViewPlatform.instance is WebKitWebViewPlatform) {
       params = WebKitWebViewControllerCreationParams(
@@ -7709,21 +7717,17 @@ class _SecureContentViewerPageState extends State<SecureContentViewerPage> {
       params = const PlatformWebViewControllerCreationParams();
     }
 
-    controller = WebViewController.fromPlatformCreationParams(params)
+    final webController = WebViewController.fromPlatformCreationParams(params)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black);
 
-    if (controller.platform is AndroidWebViewController) {
-      (controller.platform as AndroidWebViewController)
+    if (webController.platform is AndroidWebViewController) {
+      (webController.platform as AndroidWebViewController)
           .setMediaPlaybackRequiresUserGesture(false);
     }
 
-    if (widget.kind == SecureContentKind.video &&
-        isDirectVideoUrl(contentUrl)) {
-      controller.loadHtmlString(videoPlayerHtml(contentUrl));
-    } else {
-      controller.loadRequest(Uri.parse(contentUrl));
-    }
+    webController.loadRequest(Uri.parse(contentUrl));
+    controller = webController;
   }
 
   @override
@@ -7762,7 +7766,110 @@ class _SecureContentViewerPageState extends State<SecureContentViewerPage> {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
       ),
-      body: WebViewWidget(controller: controller),
+      body: useNativeVideo
+          ? NativeVideoPlayer(url: contentUrl)
+          : WebViewWidget(controller: controller!),
+    );
+  }
+}
+
+class NativeVideoPlayer extends StatefulWidget {
+  const NativeVideoPlayer({required this.url, super.key});
+
+  final String url;
+
+  @override
+  State<NativeVideoPlayer> createState() => _NativeVideoPlayerState();
+}
+
+class _NativeVideoPlayerState extends State<NativeVideoPlayer> {
+  late final VideoPlayerController controller;
+  late final Future<void> initializeFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    initializeFuture = controller.initialize().then((_) {
+      controller.play();
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: initializeFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError || !controller.value.isInitialized) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Text(
+                'تعذر تشغيل ملف MOV داخل التطبيق. حوّله إلى MP4/H.264 أو استخدم Bunny Stream.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white, fontSize: 15),
+              ),
+            ),
+          );
+        }
+
+        return ValueListenableBuilder<VideoPlayerValue>(
+          valueListenable: controller,
+          builder: (context, value, _) {
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                Center(
+                  child: AspectRatio(
+                    aspectRatio: value.aspectRatio == 0
+                        ? 16 / 9
+                        : value.aspectRatio,
+                    child: VideoPlayer(controller),
+                  ),
+                ),
+                IconButton(
+                  iconSize: 72,
+                  color: Colors.white,
+                  onPressed: () {
+                    value.isPlaying ? controller.pause() : controller.play();
+                  },
+                  icon: Icon(
+                    value.isPlaying
+                        ? Icons.pause_circle_filled_rounded
+                        : Icons.play_circle_fill_rounded,
+                  ),
+                ),
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: 18,
+                  child: VideoProgressIndicator(
+                    controller,
+                    allowScrubbing: true,
+                    colors: const VideoProgressColors(
+                      playedColor: Colors.white,
+                      bufferedColor: Colors.white38,
+                      backgroundColor: Colors.white24,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
