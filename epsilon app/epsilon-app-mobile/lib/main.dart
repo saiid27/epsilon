@@ -13,6 +13,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import 'api_repository.dart';
 import 'firebase_options.dart';
@@ -7697,9 +7699,24 @@ class _SecureContentViewerPageState extends State<SecureContentViewerPage> {
     super.initState();
     enableSecureWindow();
     contentUrl = toVideoViewerUrl(widget.url);
-    controller = WebViewController()
+    late final PlatformWebViewControllerCreationParams params;
+    if (WebViewPlatform.instance is WebKitWebViewPlatform) {
+      params = WebKitWebViewControllerCreationParams(
+        allowsInlineMediaPlayback: true,
+        mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
+      );
+    } else {
+      params = const PlatformWebViewControllerCreationParams();
+    }
+
+    controller = WebViewController.fromPlatformCreationParams(params)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black);
+
+    if (controller.platform is AndroidWebViewController) {
+      (controller.platform as AndroidWebViewController)
+          .setMediaPlaybackRequiresUserGesture(false);
+    }
 
     if (widget.kind == SecureContentKind.video &&
         isDirectVideoUrl(contentUrl)) {
@@ -7885,6 +7902,7 @@ bool isDirectVideoUrl(String url) {
 
 String videoPlayerHtml(String url) {
   final escapedUrl = const HtmlEscape().convert(url);
+  final escapedType = const HtmlEscape().convert(videoMimeType(url));
   return '''
 <!doctype html>
 <html>
@@ -7928,7 +7946,9 @@ String videoPlayerHtml(String url) {
   </style>
 </head>
 <body>
-  <video id="player" controls playsinline webkit-playsinline preload="metadata" controlsList="nodownload"></video>
+  <video id="player" controls playsinline webkit-playsinline preload="metadata" controlsList="nodownload">
+    <source src="$escapedUrl" type="$escapedType">
+  </video>
   <div id="message">تعذر تشغيل الفيديو داخل التطبيق. تحقق من رابط Bunny أو صيغة الفيديو.</div>
   <script>
     const source = "$escapedUrl";
@@ -7956,10 +7976,24 @@ String videoPlayerHtml(String url) {
         showError();
       }
     } else {
-      player.src = source;
+      player.load();
     }
   </script>
 </body>
 </html>
 ''';
+}
+
+String videoMimeType(String url) {
+  final path = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+  if (path.endsWith('.mov')) {
+    return 'video/quicktime';
+  }
+  if (path.endsWith('.webm')) {
+    return 'video/webm';
+  }
+  if (path.endsWith('.m3u8')) {
+    return 'application/vnd.apple.mpegurl';
+  }
+  return 'video/mp4';
 }
