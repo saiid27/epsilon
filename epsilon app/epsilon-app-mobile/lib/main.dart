@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -7689,20 +7690,22 @@ class SecureContentViewerPage extends StatefulWidget {
 class _SecureContentViewerPageState extends State<SecureContentViewerPage> {
   static const secureChannel = MethodChannel('epsilon/secure_window');
   late final WebViewController controller;
-  late final Uri contentUri;
+  late final String contentUrl;
 
   @override
   void initState() {
     super.initState();
     enableSecureWindow();
-    contentUri = Uri.parse(toDrivePreviewUrl(widget.url));
+    contentUrl = toVideoViewerUrl(widget.url);
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..loadRequest(contentUri);
+      ..setBackgroundColor(Colors.black);
 
-    if (Platform.isAndroid && widget.kind == SecureContentKind.video) {
-      unawaited(openExternally());
+    if (widget.kind == SecureContentKind.video &&
+        isDirectVideoUrl(contentUrl)) {
+      controller.loadHtmlString(videoPlayerHtml(contentUrl));
+    } else {
+      controller.loadRequest(Uri.parse(contentUrl));
     }
   }
 
@@ -7728,14 +7731,6 @@ class _SecureContentViewerPageState extends State<SecureContentViewerPage> {
     }
   }
 
-  Future<void> openExternally() async {
-    try {
-      await launchUrl(contentUri, mode: LaunchMode.externalApplication);
-    } on Object catch (error) {
-      debugPrint('Could not open content externally: $error');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -7749,13 +7744,6 @@ class _SecureContentViewerPageState extends State<SecureContentViewerPage> {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'فتح خارج التطبيق',
-            onPressed: () => unawaited(openExternally()),
-            icon: const Icon(Icons.open_in_new_rounded),
-          ),
-        ],
       ),
       body: WebViewWidget(controller: controller),
     );
@@ -7864,8 +7852,12 @@ List<String> parseSubjects(String raw) {
   return subjects.isEmpty ? ['مادة عامة'] : subjects;
 }
 
-String toDrivePreviewUrl(String url) {
+String toVideoViewerUrl(String url) {
   final trimmed = url.trim();
+  if (isDirectVideoUrl(trimmed)) {
+    return trimmed;
+  }
+
   final idMatch =
       RegExp(r'/d/([^/]+)').firstMatch(trimmed) ??
       RegExp(r'id=([^&]+)').firstMatch(trimmed);
@@ -7880,4 +7872,43 @@ String toDrivePreviewUrl(String url) {
   }
 
   return 'https://drive.google.com/file/d/$fileId/preview';
+}
+
+bool isDirectVideoUrl(String url) {
+  final path = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+  return path.endsWith('.mp4') ||
+      path.endsWith('.webm') ||
+      path.endsWith('.mov') ||
+      path.endsWith('.m4v') ||
+      path.endsWith('.m3u8');
+}
+
+String videoPlayerHtml(String url) {
+  final escapedUrl = const HtmlEscape().convert(url);
+  return '''
+<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+  <video controls playsinline preload="metadata" src="$escapedUrl"></video>
+</body>
+</html>
+''';
 }
