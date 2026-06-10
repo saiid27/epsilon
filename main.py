@@ -388,12 +388,14 @@ def login():
             return redirect(url_for("home"))
         return render_template("login.html")
 
-    username = request.form.get("username","").strip()
+    identifier = request.form.get("username","").strip()
     password = request.form.get("password","")
     with db() as conn:
         cur = dict_cursor(conn)
-        cur.execute("SELECT * FROM users WHERE username=%s AND password=%s",
-                    (username, hash_password(password)))
+        cur.execute("""SELECT * FROM users
+                       WHERE (username=%s OR phone=%s) AND password=%s
+                       LIMIT 1""",
+                    (identifier, identifier, hash_password(password)))
         u = cur.fetchone(); cur.close()
     if not u:
         flash("Identifiants incorrects.", "danger"); return redirect(url_for("login"))
