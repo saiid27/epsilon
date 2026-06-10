@@ -25,6 +25,28 @@ CREATE TABLE IF NOT EXISTS verification_codes (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS in_person_students (
+  id SERIAL PRIMARY KEY,
+  full_name VARCHAR(150) NOT NULL,
+  phone VARCHAR(30),
+  course_name VARCHAR(100) NOT NULL DEFAULT '',
+  monthly_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  start_month VARCHAR(7) NOT NULL,
+  notes TEXT,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS in_person_payments (
+  id SERIAL PRIMARY KEY,
+  student_id INT NOT NULL REFERENCES in_person_students(id) ON DELETE CASCADE,
+  month_label VARCHAR(7) NOT NULL,
+  amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  paid_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  recorded_by INT REFERENCES users(id) ON DELETE SET NULL,
+  UNIQUE (student_id, month_label)
+);
+
 CREATE INDEX IF NOT EXISTS idx_verification_codes_lookup
   ON verification_codes (phone, purpose, code, used, expires_at);
 

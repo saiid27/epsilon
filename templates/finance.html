@@ -372,6 +372,86 @@
       border-radius: 12px;
       background: #fff;
     }
+    .tabs-row,
+    .form-grid,
+    .near-grid {
+      display: grid;
+      gap: 8px;
+    }
+    .tabs-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 9px;
+    }
+    .tab-card {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid var(--border);
+      color: var(--teal-dark);
+      font-weight: 900;
+    }
+    .form-grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      align-items: end;
+    }
+    .field {
+      display: grid;
+      gap: 5px;
+    }
+    .field label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .field input {
+      width: 100%;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fbfefe;
+      padding: 0 9px;
+      font: inherit;
+    }
+    .field-wide { grid-column: span 2; }
+    .near-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: 9px 0;
+    }
+    .mini-stat {
+      border-radius: 10px;
+      padding: 9px;
+      background: #f8fbfb;
+      border: 1px solid var(--border);
+      font-weight: 900;
+    }
+    .mini-stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      margin-bottom: 4px;
+    }
+    .history-list {
+      display: grid;
+      gap: 7px;
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 8px 10px;
+      background: #fbfefe;
+      font-size: 12px;
+      font-weight: 800;
+    }
     .footer {
       padding: 8px 0 3px;
       color: #678082;
@@ -583,6 +663,20 @@
       .section-card {
         padding: 10px;
       }
+      .tabs-row,
+      .near-summary {
+        grid-template-columns: 1fr;
+      }
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      .field-wide {
+        grid-column: auto;
+      }
+      .history-item {
+        align-items: flex-start;
+        flex-direction: column;
+      }
     }
   </style>
 </head>
@@ -603,6 +697,14 @@
       <a class="side-link {% if status_filter == 'all' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='all') }}">
         <span class="side-icon"><i class="bi bi-grid-3x3-gap-fill"></i></span>
         <span>الرئيسية</span>
+      </a>
+      <a class="side-link" href="#remote-students">
+        <span class="side-icon"><i class="bi bi-wifi"></i></span>
+        <span>طلاب عن بعد</span>
+      </a>
+      <a class="side-link" href="#near-students">
+        <span class="side-icon"><i class="bi bi-person-plus-fill"></i></span>
+        <span>طلاب عن قرب</span>
       </a>
       <a class="side-link {% if status_filter == 'paid' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='paid') }}">
         <span class="side-icon"><i class="bi bi-card-checklist"></i></span>
@@ -661,6 +763,11 @@
         <div class="flash">{{m}}</div>
       {% endfor %}
     {% endwith %}
+
+    <div class="tabs-row">
+      <a class="tab-card" href="#remote-students"><i class="bi bi-wifi"></i> دورات عن بعد</a>
+      <a class="tab-card" href="#near-students"><i class="bi bi-person-lines-fill"></i> دورات عن قرب</a>
+    </div>
 
     <section class="panel">
       <div class="stats-grid">
@@ -721,7 +828,7 @@
       </span>
     </section>
 
-    <section class="panel table-panel">
+    <section id="remote-students" class="panel table-panel">
       <table>
         <thead>
           <tr>
@@ -794,6 +901,120 @@
           {% endfor %}
         </tbody>
       </table>
+    </section>
+
+    <section id="near-students" class="finance-section section-card">
+      <strong>طلاب عن قرب</strong>
+      <form class="form-grid" method="POST" action="{{ url_for('finance_add_in_person_student') }}" style="margin-top:10px">
+        <div class="field field-wide">
+          <label>اسم الطالب</label>
+          <input name="full_name" required placeholder="اسم الطالب كامل">
+        </div>
+        <div class="field">
+          <label>الهاتف</label>
+          <input name="phone" placeholder="رقم الهاتف">
+        </div>
+        <div class="field">
+          <label>الدورة</label>
+          <input name="course_name" required placeholder="مثلا: رياضيات">
+        </div>
+        <div class="field">
+          <label>القسط الشهري</label>
+          <input name="monthly_amount" type="number" min="0" step="1" value="0">
+        </div>
+        <div class="field">
+          <label>شهر البداية</label>
+          <input name="start_month" type="month" value="{{ selected_month }}" required>
+        </div>
+        <div class="field field-wide">
+          <label>ملاحظات</label>
+          <input name="notes" placeholder="اختياري">
+        </div>
+        <button class="pill-btn" type="submit"><i class="bi bi-plus-circle"></i> إضافة طالب</button>
+      </form>
+
+      <form class="form-grid" method="GET" action="{{ url_for('finance_dashboard') }}" style="margin-top:12px">
+        <input type="hidden" name="status" value="{{ status_filter }}">
+        <div class="field">
+          <label>الشهر المعروض</label>
+          <input name="month" type="month" value="{{ selected_month }}">
+        </div>
+        <button class="pill-btn" type="submit"><i class="bi bi-calendar-check"></i> عرض الشهر</button>
+      </form>
+
+      <div class="near-summary">
+        <div class="mini-stat"><span>طلاب عن قرب</span>{{ near_stats.total or 0 }}</div>
+        <div class="mini-stat"><span>دفعوا هذا الشهر</span>{{ near_stats.paid_this_month or 0 }}</div>
+        <div class="mini-stat"><span>المستحقات</span>MRU {{ "%.0f"|format(near_stats.debt_total or 0) }}</div>
+      </div>
+
+      <div class="panel table-panel">
+        <table>
+          <thead>
+            <tr>
+              <th>الطالب</th>
+              <th>الهاتف</th>
+              <th>الدورة</th>
+              <th>القسط</th>
+              <th>شهر البداية</th>
+              <th>حالة {{ selected_month }}</th>
+              <th>الأشهر غير المدفوعة</th>
+              <th>المستحقات</th>
+              <th>إجراء</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in in_person_students %}
+              <tr data-search="{{ student.full_name }} {{ student.phone or '' }} {{ student.course_name }}">
+                <td data-label="الطالب">{{ student.full_name }}</td>
+                <td data-label="الهاتف">{{ student.phone or '-' }}</td>
+                <td data-label="الدورة">{{ student.course_name }}</td>
+                <td data-label="القسط">MRU {{ "%.0f"|format(student.monthly_amount or 0) }}</td>
+                <td data-label="شهر البداية">{{ student.start_month }}</td>
+                <td data-label="حالة الشهر">
+                  {% if student.paid_current_month %}
+                    <span class="status-chip paid">دفع</span>
+                  {% else %}
+                    <span class="status-chip unpaid">دين</span>
+                  {% endif %}
+                </td>
+                <td data-label="غير المدفوعة">{{ student.unpaid_months }}</td>
+                <td data-label="المستحقات">MRU {{ "%.0f"|format(student.total_due or 0) }}</td>
+                <td data-label="إجراء">
+                  <div class="actions">
+                    <form method="POST" action="{{ url_for('finance_add_in_person_payment', student_id=student.id) }}">
+                      <input type="hidden" name="month_label" value="{{ selected_month }}">
+                      <input type="hidden" name="amount" value="{{ student.monthly_amount or 0 }}">
+                      <button class="pill-btn" type="submit">دفع الشهر</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('finance_deactivate_in_person_student', student_id=student.id) }}">
+                      <button class="pill-btn pill-danger" type="submit">إخفاء</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="9" class="empty-row">لا يوجد طلاب عن قرب بعد.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="finance-section">
+        <strong>سجل الدفعات الشهرية</strong>
+        <div class="history-list" style="margin-top:8px">
+          {% for payment in in_person_payments %}
+            <div class="history-item">
+              <span>{{ payment.full_name }} - {{ payment.month_label }}</span>
+              <span>MRU {{ "%.0f"|format(payment.amount or 0) }}</span>
+            </div>
+          {% else %}
+            <div class="history-item">لا توجد دفعات شهرية مسجلة.</div>
+          {% endfor %}
+        </div>
+      </div>
     </section>
 
     <section id="expenses" class="finance-section section-card">

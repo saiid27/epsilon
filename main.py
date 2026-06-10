@@ -262,6 +262,19 @@ def ensure_default_finance_user(cur):
         VALUES (%s,%s,%s,'finance','active',TRUE,'not_applicable')
     """, (FINANCE_USERNAME, phone, hash_password(FINANCE_PASSWORD)))
 
+def current_month_label():
+    return datetime.utcnow().strftime("%Y-%m")
+
+def count_months_inclusive(start_month, end_month):
+    try:
+        start = datetime.strptime(str(start_month), "%Y-%m")
+        end = datetime.strptime(str(end_month), "%Y-%m")
+    except (TypeError, ValueError):
+        return 0
+    if end < start:
+        return 0
+    return (end.year - start.year) * 12 + end.month - start.month + 1
+
 def has_role(required_role):
     current_role = session.get("role")
     if required_role is None:
@@ -655,6 +668,30 @@ def ensure_courses_table():
             )
         """)
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS in_person_students (
+                id SERIAL PRIMARY KEY,
+                full_name VARCHAR(150) NOT NULL,
+                phone VARCHAR(30),
+                course_name VARCHAR(100) NOT NULL DEFAULT '',
+                monthly_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+                start_month VARCHAR(7) NOT NULL,
+                notes TEXT,
+                active BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS in_person_payments (
+                id SERIAL PRIMARY KEY,
+                student_id INT NOT NULL REFERENCES in_person_students(id) ON DELETE CASCADE,
+                month_label VARCHAR(7) NOT NULL,
+                amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+                paid_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                recorded_by INT REFERENCES users(id) ON DELETE SET NULL,
+                UNIQUE (student_id, month_label)
+            )
+        """)
+        cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_lessons_level_subject
             ON lessons (level, subject, uploaded_at DESC)
         """)
@@ -669,6 +706,14 @@ def ensure_courses_table():
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_notifications_created_at
             ON notifications (created_at DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_in_person_students_active
+            ON in_person_students (active, created_at DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_in_person_payments_student_month
+            ON in_person_payments (student_id, month_label)
         """)
         if not table_exists:
             for index, course in enumerate(COURSES, start=1):
@@ -1064,6 +1109,9 @@ def finance_dashboard():
     valid_filters = {"all", "paid", "unpaid", "pending"}
     if status_filter not in valid_filters:
         status_filter = "all"
+    selected_month = request.args.get("month", current_month_label()).strip() or current_month_label()
+    if not re.match(r"^\d{4}-\d{2}$", selected_month):
+        selected_month = current_month_label()
 
     with db() as conn:
         cur = dict_cursor(conn)
@@ -1098,10 +1146,54 @@ def finance_dashboard():
             FROM users
         """)
         stats = cur.fetchone()
+        cur.execute("""
+            SELECT s.*,
+                   COALESCE(paid_counts.paid_months, 0) AS paid_months,
+                   month_payment.id AS current_payment_id,
+                   month_payment.amount AS current_payment_amount,
+                   month_payment.paid_at AS current_paid_at
+            FROM in_person_students s
+            LEFT JOIN (
+                SELECT student_id, COUNT(*) AS paid_months
+                FROM in_person_payments
+                GROUP BY student_id
+            ) paid_counts ON paid_counts.student_id = s.id
+            LEFT JOIN in_person_payments month_payment
+                   ON month_payment.student_id = s.id
+                  AND month_payment.month_label = %s
+            WHERE s.active=TRUE
+            ORDER BY s.created_at DESC, s.id DESC
+        """, (selected_month,))
+        in_person_students = cur.fetchall()
+        cur.execute("""
+            SELECT p.*, s.full_name
+            FROM in_person_payments p
+            JOIN in_person_students s ON s.id = p.student_id
+            ORDER BY p.month_label DESC, p.paid_at DESC, p.id DESC
+            LIMIT 40
+        """)
+        in_person_payments = cur.fetchall()
         cur.close()
 
+    near_stats = {"total": len(in_person_students), "paid_this_month": 0, "debt_total": 0}
+    for student in in_person_students:
+        paid_months = int(student.get("paid_months") or 0)
+        due_months = count_months_inclusive(student.get("start_month"), selected_month)
+        unpaid_months = max(due_months - paid_months, 0)
+        monthly_amount = float(student.get("monthly_amount") or 0)
+        student["unpaid_months"] = unpaid_months
+        student["total_due"] = unpaid_months * monthly_amount
+        student["paid_current_month"] = bool(student.get("current_payment_id"))
+        if student["paid_current_month"]:
+            near_stats["paid_this_month"] += 1
+        near_stats["debt_total"] += student["total_due"]
+
     return render_template("finance.html", students=students, stats=stats,
-                           status_filter=status_filter)
+                           status_filter=status_filter,
+                           selected_month=selected_month,
+                           in_person_students=in_person_students,
+                           in_person_payments=in_person_payments,
+                           near_stats=near_stats)
 
 @app.post("/finance/users/<int:uid>/payment")
 @finance_login_required
@@ -1122,6 +1214,78 @@ def finance_update_payment(uid):
         cur.close()
     flash("تم تحديث حالة الدفع." if updated else "لم يتم العثور على الطالب.", "success" if updated else "warning")
     return redirect(request.referrer or url_for("finance_dashboard"))
+
+@app.post("/finance/in-person/add")
+@finance_login_required
+def finance_add_in_person_student():
+    full_name = request.form.get("full_name", "").strip()
+    phone = request.form.get("phone", "").strip() or None
+    course_name = request.form.get("course_name", "").strip()
+    monthly_amount = request.form.get("monthly_amount", "0").strip() or "0"
+    start_month = request.form.get("start_month", current_month_label()).strip()
+    notes = request.form.get("notes", "").strip() or None
+    if not full_name or not course_name or not re.match(r"^\d{4}-\d{2}$", start_month):
+        flash("اسم الطالب، الدورة، وشهر البداية مطلوبة.", "danger")
+        return redirect(url_for("finance_dashboard"))
+    try:
+        amount = float(monthly_amount)
+    except ValueError:
+        amount = 0
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO in_person_students
+                (full_name, phone, course_name, monthly_amount, start_month, notes)
+            VALUES (%s,%s,%s,%s,%s,%s)
+        """, (full_name, phone, course_name, amount, start_month, notes))
+        conn.commit()
+        cur.close()
+    flash("تمت إضافة طالب عن قرب.", "success")
+    return redirect(url_for("finance_dashboard", month=start_month))
+
+@app.post("/finance/in-person/<int:student_id>/pay")
+@finance_login_required
+def finance_add_in_person_payment(student_id):
+    month_label = request.form.get("month_label", current_month_label()).strip()
+    amount = request.form.get("amount", "").strip()
+    if not re.match(r"^\d{4}-\d{2}$", month_label):
+        flash("الشهر غير صحيح.", "danger")
+        return redirect(url_for("finance_dashboard"))
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("SELECT monthly_amount FROM in_person_students WHERE id=%s AND active=TRUE", (student_id,))
+        student = cur.fetchone()
+        if not student:
+            cur.close()
+            flash("لم يتم العثور على الطالب.", "warning")
+            return redirect(url_for("finance_dashboard", month=month_label))
+        try:
+            payment_amount = float(amount) if amount else float(student.get("monthly_amount") or 0)
+        except ValueError:
+            payment_amount = float(student.get("monthly_amount") or 0)
+        cur.execute("""
+            INSERT INTO in_person_payments (student_id, month_label, amount, recorded_by)
+            VALUES (%s,%s,%s,%s)
+            ON CONFLICT (student_id, month_label)
+            DO UPDATE SET amount=EXCLUDED.amount,
+                          paid_at=CURRENT_TIMESTAMP,
+                          recorded_by=EXCLUDED.recorded_by
+        """, (student_id, month_label, payment_amount, session.get("user_id")))
+        conn.commit()
+        cur.close()
+    flash("تم تسجيل دفع الشهر.", "success")
+    return redirect(url_for("finance_dashboard", month=month_label) + "#near-students")
+
+@app.post("/finance/in-person/<int:student_id>/deactivate")
+@finance_login_required
+def finance_deactivate_in_person_student(student_id):
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE in_person_students SET active=FALSE WHERE id=%s", (student_id,))
+        conn.commit()
+        cur.close()
+    flash("تم إخفاء الطالب من قائمة عن قرب.", "warning")
+    return redirect(url_for("finance_dashboard") + "#near-students")
 
 @app.route("/admin/lessons/create", methods=["POST"])
 @admin_login_required
