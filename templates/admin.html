@@ -36,7 +36,7 @@
       <thead class="table-dark">
         <tr>
           <th>ID</th><th>المستخدم</th><th>رقم الواتساب</th><th>نوع الحساب</th>
-          <th>الدورة</th><th>المادة</th><th>حالة الحساب</th><th>حالة الرقم</th>
+          <th>الدورة</th><th>المادة</th><th>حالة الحساب</th><th>حالة الدفع</th><th>حالة الرقم</th>
           <th>صورة الدفع</th><th>إجراء</th>
         </tr>
       </thead>
@@ -54,6 +54,17 @@
               <span class="badge bg-warning text-dark">في الانتظار</span>
             {% else %}
               <span class="badge bg-success">نشط</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.payment_status == 'paid' %}
+              <span class="badge bg-success">دفع</span>
+            {% elif u.payment_status == 'unpaid' %}
+              <span class="badge bg-danger">لم يدفع</span>
+            {% elif u.payment_status == 'pending' %}
+              <span class="badge bg-warning text-dark">قيد المراجعة</span>
+            {% else %}
+              <span class="badge bg-secondary">-</span>
             {% endif %}
           </td>
           <td>{% if u.phone_verified %}<span class="badge bg-success">نعم</span>{% else %}<span class="badge bg-secondary">لا</span>{% endif %}</td>
@@ -326,6 +337,13 @@
     <div class="col-12 col-md-3"><input name="admin_phone" class="form-control" placeholder="رقم الهاتف" required></div>
     <div class="col-12 col-md-3"><input name="admin_password" class="form-control" placeholder="كلمة المرور" required></div>
     <div class="col-12 col-md-3"><button class="btn btn-dark w-100">إضافة أدمن</button></div>
+  </form>
+  <h5 class="mb-3 mt-4">إنشاء حساب مالية</h5>
+  <form class="row g-2" method="POST" action="{{ url_for('developer_create_finance') }}">
+    <div class="col-12 col-md-3"><input name="finance_username" class="form-control" placeholder="اسم حساب المالية" required></div>
+    <div class="col-12 col-md-3"><input name="finance_phone" class="form-control" placeholder="رقم الهاتف" required></div>
+    <div class="col-12 col-md-3"><input name="finance_password" class="form-control" placeholder="كلمة المرور" required></div>
+    <div class="col-12 col-md-3"><button class="btn btn-success w-100">إضافة مالية</button></div>
   </form>
   {% endif %}
 

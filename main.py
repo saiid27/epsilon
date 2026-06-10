@@ -221,6 +221,10 @@ def verify_otp(phone: str, purpose: str, code: str) -> bool:
 
 # ===== Auth =====
 ADMIN_ROLES = {"admin", "developer"}
+FINANCE_ROLES = {"finance", "developer"}
+FINANCE_USERNAME = os.getenv("FINANCE_USERNAME", "finance")
+FINANCE_PHONE = os.getenv("FINANCE_PHONE", "00000000")
+FINANCE_PASSWORD = os.getenv("FINANCE_PASSWORD", "finance123")
 
 def has_role(required_role):
     current_role = session.get("role")
@@ -249,6 +253,9 @@ def admin_login_required(fn):
 def developer_required(fn):
     return login_required("developer")(fn)
 
+def finance_login_required(fn):
+    return login_required(FINANCE_ROLES)(fn)
+
 def is_developer():
     return session.get("role") == "developer"
 
@@ -260,12 +267,21 @@ def target_is_developer(uid):
         cur.close()
     return bool(row and row[0] == "developer")
 
+def target_is_protected(uid):
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT role FROM users WHERE id=%s", (uid,))
+        row = cur.fetchone()
+        cur.close()
+    return bool(row and row[0] in {"developer", "finance"})
+
 # ===== Routes =====
 @app.route("/")
 def home():
     if "user_id" in session:
         r = session["role"]
         return redirect(url_for("admin_dashboard" if r in ADMIN_ROLES else
+                                "finance_dashboard" if r=="finance" else
                                 "teacher_dashboard" if r=="teacher" else
                                 "student_dashboard"))
     return render_template("home.html", free_pdfs=fetch_free_pdfs(active_only=True))
@@ -289,6 +305,7 @@ def robots_txt():
         "User-agent: *",
         "Allow: /",
         "Disallow: /admin",
+        "Disallow: /finance",
         "Disallow: /teacher",
         "Disallow: /student",
         "Disallow: /payment",
@@ -500,6 +517,7 @@ def ensure_courses_table():
                 status VARCHAR(20) NOT NULL DEFAULT 'pending',
                 phone_verified BOOLEAN NOT NULL DEFAULT FALSE,
                 payment_image VARCHAR(255),
+                payment_status VARCHAR(20),
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -522,6 +540,17 @@ def ensure_courses_table():
         table_exists = cur.fetchone()[0] is not None
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS subject VARCHAR(80)")
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_sender_phone VARCHAR(30)")
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20)")
+        cur.execute("""
+            UPDATE users
+            SET payment_status = CASE
+                WHEN role <> 'student' THEN 'not_applicable'
+                WHEN payment_image IS NOT NULL OR payment_sender_phone IS NOT NULL THEN 'pending'
+                ELSE 'unpaid'
+            END
+            WHERE payment_status IS NULL
+        """)
+        cur.execute("ALTER TABLE users ALTER COLUMN payment_status SET DEFAULT 'pending'")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS courses (
                 id SERIAL PRIMARY KEY,
@@ -625,6 +654,18 @@ def ensure_courses_table():
                         VALUES (%s,%s,%s)
                         ON CONFLICT (course_code, subject) DO NOTHING
                     """, (course_code, subject, index))
+        if FINANCE_USERNAME and FINANCE_PHONE and FINANCE_PASSWORD:
+            cur.execute("""
+                INSERT INTO users
+                    (username, phone, password, role, status, phone_verified, payment_status)
+                SELECT %s,%s,%s,'finance','active',TRUE,'not_applicable'
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM users WHERE username=%s OR phone=%s
+                )
+            """, (
+                FINANCE_USERNAME, FINANCE_PHONE, hash_password(FINANCE_PASSWORD),
+                FINANCE_USERNAME, FINANCE_PHONE
+            ))
         conn.commit()
         cur.close()
 
@@ -856,8 +897,9 @@ def payment():
         try:
             with db() as conn:
                 cur = conn.cursor()
-                cur.execute("""INSERT INTO users (username, phone, password, role, level, status, phone_verified, payment_image)
-                               VALUES (%s,%s,%s,'student',%s,'pending',TRUE,%s)""",
+                cur.execute("""INSERT INTO users
+                               (username, phone, password, role, level, status, phone_verified, payment_image, payment_status)
+                               VALUES (%s,%s,%s,'student',%s,'pending',TRUE,%s,'pending')""",
                             (username, phone, hash_password(password), level, fname))
                 conn.commit()
                 cur.close()
@@ -941,11 +983,11 @@ def admin_dashboard():
     with db() as conn:
         cur = dict_cursor(conn)
         if is_developer():
-            cur.execute("""SELECT id,username,phone,role,level,subject,status,phone_verified,payment_image
+            cur.execute("""SELECT id,username,phone,role,level,subject,status,phone_verified,payment_image,payment_status
                            FROM users ORDER BY id DESC""")
         else:
-            cur.execute("""SELECT id,username,phone,role,level,subject,status,phone_verified,payment_image
-                           FROM users WHERE role <> 'developer' ORDER BY id DESC""")
+            cur.execute("""SELECT id,username,phone,role,level,subject,status,phone_verified,payment_image,payment_status
+                           FROM users WHERE role NOT IN ('developer','finance') ORDER BY id DESC""")
         users = cur.fetchall()
         cur.execute("""SELECT l.*, u.username AS uploader_name
                        FROM lessons l
@@ -963,7 +1005,7 @@ def admin_dashboard():
 @app.route("/admin/activate/<int:uid>")
 @admin_login_required
 def activate_user(uid):
-    if not is_developer() and target_is_developer(uid):
+    if not is_developer() and target_is_protected(uid):
         flash("Action non autorisée.", "danger")
         return redirect(url_for("admin_dashboard"))
     with db() as conn:
@@ -974,7 +1016,7 @@ def activate_user(uid):
 @app.route("/admin/delete/<int:uid>")
 @admin_login_required
 def delete_user(uid):
-    if not is_developer() and target_is_developer(uid):
+    if not is_developer() and target_is_protected(uid):
         flash("Action non autorisée.", "danger")
         return redirect(url_for("admin_dashboard"))
     if is_developer() and uid == session.get("user_id"):
@@ -986,6 +1028,73 @@ def delete_user(uid):
     else:
         flash("Compte supprimÃ©.", "warning")
     return redirect(url_for("admin_dashboard"))
+
+# ===== Tableau de bord Finance =====
+@app.route("/finance")
+@finance_login_required
+def finance_dashboard():
+    status_filter = request.args.get("status", "all").strip()
+    valid_filters = {"all", "paid", "unpaid", "pending"}
+    if status_filter not in valid_filters:
+        status_filter = "all"
+
+    with db() as conn:
+        cur = dict_cursor(conn)
+        clauses = ["role='student'"]
+        params = []
+        if status_filter != "all":
+            clauses.append("payment_status=%s")
+            params.append(status_filter)
+        where = " AND ".join(clauses)
+        cur.execute(f"""
+            SELECT id, username, phone, level, status, phone_verified,
+                   payment_image, payment_sender_phone, payment_status, created_at
+            FROM users
+            WHERE {where}
+            ORDER BY
+                CASE payment_status
+                    WHEN 'pending' THEN 1
+                    WHEN 'unpaid' THEN 2
+                    WHEN 'paid' THEN 3
+                    ELSE 4
+                END,
+                created_at DESC,
+                id DESC
+        """, params)
+        students = cur.fetchall()
+        cur.execute("""
+            SELECT
+                COUNT(*) FILTER (WHERE role='student') AS total,
+                COUNT(*) FILTER (WHERE role='student' AND payment_status='paid') AS paid,
+                COUNT(*) FILTER (WHERE role='student' AND payment_status='unpaid') AS unpaid,
+                COUNT(*) FILTER (WHERE role='student' AND payment_status='pending') AS pending
+            FROM users
+        """)
+        stats = cur.fetchone()
+        cur.close()
+
+    return render_template("finance.html", students=students, stats=stats,
+                           status_filter=status_filter)
+
+@app.post("/finance/users/<int:uid>/payment")
+@finance_login_required
+def finance_update_payment(uid):
+    payment_status = request.form.get("payment_status", "").strip()
+    if payment_status not in {"paid", "unpaid", "pending"}:
+        flash("حالة الدفع غير صحيحة.", "danger")
+        return redirect(url_for("finance_dashboard"))
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE users
+            SET payment_status=%s
+            WHERE id=%s AND role='student'
+        """, (payment_status, uid))
+        updated = cur.rowcount
+        conn.commit()
+        cur.close()
+    flash("تم تحديث حالة الدفع." if updated else "لم يتم العثور على الطالب.", "success" if updated else "warning")
+    return redirect(request.referrer or url_for("finance_dashboard"))
 
 @app.route("/admin/lessons/create", methods=["POST"])
 @admin_login_required
@@ -1248,6 +1357,30 @@ def developer_create_admin():
         flash(msg, "danger")
     return redirect(url_for("admin_dashboard"))
 
+@app.route("/admin/create-finance", methods=["POST"])
+@developer_required
+def developer_create_finance():
+    username = request.form.get("finance_username","").strip()
+    phone = request.form.get("finance_phone","").strip()
+    password = request.form.get("finance_password","")
+    if not username or not phone or not password:
+        flash("اسم حساب المالية، الرقم وكلمة المرور مطلوبة.", "danger")
+        return redirect(url_for("admin_dashboard"))
+    try:
+        with db() as conn:
+            cur = conn.cursor()
+            cur.execute("""INSERT INTO users
+                           (username, phone, password, role, status, phone_verified, payment_status)
+                           VALUES (%s,%s,%s,'finance','active',TRUE,'not_applicable')""",
+                        (username, phone, hash_password(password)))
+            conn.commit(); cur.close()
+        flash("تم إنشاء حساب المالية.", "success")
+    except IntegrityError as e:
+        msg = "اسم المستخدم مستخدم بالفعل."
+        if "phone" in str(e): msg = "رقم الهاتف مستخدم بالفعل."
+        flash(msg, "danger")
+    return redirect(url_for("admin_dashboard"))
+
 # ===== Tableau de bord Enseignant =====
 @app.route("/teacher", methods=["GET","POST"])
 @login_required("teacher")
@@ -1422,6 +1555,7 @@ def api_user_payload(user):
         "phone": user["phone"],
         "role": user["role"],
         "status": user["status"],
+        "paymentStatus": user.get("payment_status"),
         "classId": user.get("level"),
         "courseId": user.get("level"),
         "level": user.get("level"),

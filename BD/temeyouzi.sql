@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   status VARCHAR(20) NOT NULL DEFAULT 'pending',
   phone_verified BOOLEAN NOT NULL DEFAULT FALSE,
   payment_image VARCHAR(255),
+  payment_status VARCHAR(20) DEFAULT 'pending',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
