@@ -226,6 +226,42 @@ FINANCE_USERNAME = os.getenv("FINANCE_USERNAME", "finance")
 FINANCE_PHONE = os.getenv("FINANCE_PHONE", "00000000")
 FINANCE_PASSWORD = os.getenv("FINANCE_PASSWORD", "finance123")
 
+def ensure_default_finance_user(cur):
+    if not (FINANCE_USERNAME and FINANCE_PHONE and FINANCE_PASSWORD):
+        return
+
+    cur.execute("SELECT id FROM users WHERE username=%s", (FINANCE_USERNAME,))
+    existing = cur.fetchone()
+    if existing:
+        cur.execute("""
+            UPDATE users
+            SET password=%s,
+                role='finance',
+                status='active',
+                phone_verified=TRUE,
+                payment_status='not_applicable'
+            WHERE username=%s
+        """, (hash_password(FINANCE_PASSWORD), FINANCE_USERNAME))
+        return
+
+    phone = FINANCE_PHONE
+    cur.execute("SELECT id FROM users WHERE phone=%s", (phone,))
+    if cur.fetchone():
+        phone = f"{FINANCE_USERNAME}-account"
+        suffix = 2
+        while True:
+            cur.execute("SELECT id FROM users WHERE phone=%s", (phone,))
+            if not cur.fetchone():
+                break
+            phone = f"{FINANCE_USERNAME}-account-{suffix}"
+            suffix += 1
+
+    cur.execute("""
+        INSERT INTO users
+            (username, phone, password, role, status, phone_verified, payment_status)
+        VALUES (%s,%s,%s,'finance','active',TRUE,'not_applicable')
+    """, (FINANCE_USERNAME, phone, hash_password(FINANCE_PASSWORD)))
+
 def has_role(required_role):
     current_role = session.get("role")
     if required_role is None:
@@ -654,18 +690,7 @@ def ensure_courses_table():
                         VALUES (%s,%s,%s)
                         ON CONFLICT (course_code, subject) DO NOTHING
                     """, (course_code, subject, index))
-        if FINANCE_USERNAME and FINANCE_PHONE and FINANCE_PASSWORD:
-            cur.execute("""
-                INSERT INTO users
-                    (username, phone, password, role, status, phone_verified, payment_status)
-                SELECT %s,%s,%s,'finance','active',TRUE,'not_applicable'
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM users WHERE username=%s OR phone=%s
-                )
-            """, (
-                FINANCE_USERNAME, FINANCE_PHONE, hash_password(FINANCE_PASSWORD),
-                FINANCE_USERNAME, FINANCE_PHONE
-            ))
+        ensure_default_finance_user(cur)
         conn.commit()
         cur.close()
 
