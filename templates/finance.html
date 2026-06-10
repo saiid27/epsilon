@@ -5,160 +5,672 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>لوحة المالية</title>
   <meta name="robots" content="noindex, nofollow">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <style>
-    body { background: #f6f7fb; }
-    .container-fluid { max-width: 1180px; }
-    .stat { border: 0; border-radius: 8px; }
-    .table-responsive { overflow-x: auto; }
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-      margin-left: 6px;
+    :root {
+      --teal-dark: #0a6e79;
+      --teal: #087f83;
+      --teal-soft: #158a83;
+      --green: #15845a;
+      --blue: #2f5fc4;
+      --brown: #93601e;
+      --purple: #6956e8;
+      --page: #edf8f8;
+      --border: #dce9e9;
+      --text: #1d2729;
+      --muted: #6a7b80;
     }
-    .dot-paid { background: #198754; }
-    .dot-unpaid { background: #dc3545; }
-    .dot-pending { background: #ffc107; }
-    .action-form { min-width: 92px; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--page);
+      color: var(--text);
+      font-family: Tahoma, Arial, sans-serif;
+    }
+    a { color: inherit; text-decoration: none; }
+    .shell {
+      min-height: 100vh;
+      padding: 0 238px 20px 0;
+    }
+    .sidebar {
+      position: fixed;
+      inset: 0 0 0 auto;
+      width: 222px;
+      margin: 0;
+      padding: 18px 18px;
+      border-radius: 0 0 20px 20px;
+      background: linear-gradient(180deg, var(--teal-dark), #087f86 72%, #0f8990);
+      color: #fff;
+      box-shadow: -8px 0 22px rgba(4, 75, 84, .12);
+      z-index: 3;
+    }
+    .brand {
+      display: grid;
+      grid-template-columns: 42px 1fr 30px;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 34px;
+    }
+    .brand-mark,
+    .side-icon,
+    .top-icon,
+    .card-icon {
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(255,255,255,.18);
+    }
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      font-size: 22px;
+    }
+    .brand-title { font-weight: 800; line-height: 1.1; }
+    .brand-sub { display: block; margin-top: 3px; font-size: 12px; opacity: .86; }
+    .settings {
+      width: 30px;
+      height: 30px;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+    }
+    .side-nav {
+      display: grid;
+      gap: 11px;
+    }
+    .side-link {
+      min-height: 42px;
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 800;
+      color: rgba(255,255,255,.92);
+    }
+    .side-link:hover,
+    .side-link.active {
+      background: rgba(255,255,255,.12);
+      color: #fff;
+    }
+    .side-icon {
+      width: 26px;
+      height: 26px;
+      background: transparent;
+      font-size: 19px;
+    }
+    .content {
+      padding: 0 14px 0 14px;
+    }
+    .topbar {
+      min-height: 74px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 18px;
+      background: rgba(255,255,255,.82);
+      border: 1px solid var(--border);
+      border-top: 0;
+      border-radius: 0 0 14px 14px;
+      box-shadow: 0 2px 10px rgba(5, 77, 83, .06);
+    }
+    .page-title {
+      margin: 0;
+      font-size: 27px;
+      font-weight: 900;
+    }
+    .page-title small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 26px;
+      color: var(--teal-dark);
+      white-space: nowrap;
+    }
+    .top-action {
+      display: grid;
+      justify-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #174d54;
+    }
+    .top-icon {
+      width: 26px;
+      height: 26px;
+      background: transparent;
+      font-size: 21px;
+      color: var(--teal-dark);
+      position: relative;
+    }
+    .alert-badge {
+      position: absolute;
+      top: -5px;
+      left: -5px;
+      min-width: 17px;
+      height: 17px;
+      padding: 0 4px;
+      border-radius: 50px;
+      background: #dc3545;
+      color: #fff;
+      font-size: 11px;
+      line-height: 17px;
+      text-align: center;
+    }
+    .panel {
+      margin-top: 12px;
+      background: rgba(255,255,255,.72);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .stat-card {
+      min-height: 66px;
+      display: grid;
+      grid-template-columns: 46px 1fr;
+      align-items: center;
+      gap: 10px;
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: #fff;
+      overflow: hidden;
+    }
+    .stat-brown { background: var(--brown); }
+    .stat-blue { background: var(--blue); }
+    .stat-teal { background: #209180; }
+    .stat-green { background: var(--green); }
+    .card-icon {
+      width: 38px;
+      height: 38px;
+      font-size: 18px;
+    }
+    .stat-label {
+      display: block;
+      font-size: 12px;
+      opacity: .86;
+    }
+    .stat-value {
+      display: block;
+      margin-top: 2px;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+    .search-panel {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: auto minmax(220px, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 84px;
+      padding: 14px;
+    }
+    .section-label {
+      font-size: 15px;
+      font-weight: 800;
+      color: #263538;
+    }
+    .search-box {
+      height: 43px;
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #f8fbfb;
+      color: #172a2d;
+      overflow: hidden;
+    }
+    .search-box input {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      padding: 0 12px;
+      font: inherit;
+    }
+    .pill-btn {
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 6px 18px;
+      border: 0;
+      border-radius: 50px;
+      background: var(--teal);
+      color: #fff;
+      font-weight: 800;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0, 94, 98, .12);
+      cursor: pointer;
+    }
+    .quick-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin: 36px 38px 12px;
+    }
+    .quick-title {
+      width: 100%;
+      padding-inline-start: 70px;
+      color: #1f3335;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .quick-row .pill-btn {
+      min-width: 136px;
+      padding-inline: 16px;
+    }
+    .wide-balance {
+      min-height: 66px;
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: var(--purple);
+      color: #fff;
+    }
+    .wide-balance .stat-label { text-align: right; }
+    .wide-balance .stat-value { font-size: 25px; }
+    .table-panel {
+      min-height: 156px;
+      margin-top: 12px;
+      padding: 0;
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    th, td {
+      padding: 13px 10px;
+      border-bottom: 1px solid #e9eeee;
+      text-align: center;
+      font-size: 14px;
+    }
+    th {
+      background: #f3f9f9;
+      color: #304044;
+      font-weight: 900;
+    }
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 88px;
+      padding: 5px 10px;
+      border-radius: 50px;
+      font-weight: 800;
+      font-size: 12px;
+    }
+    .paid { background: #dff4e9; color: #15734f; }
+    .unpaid { background: #fde6e6; color: #b42323; }
+    .pending { background: #fff3cd; color: #9a6a00; }
+    .account-active { background: #e0f1ff; color: #15608e; }
+    .proof-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      padding: 5px 12px;
+      border-radius: 50px;
+      border: 1px solid #cfdcdd;
+      color: #28555b;
+      font-weight: 800;
+    }
+    .actions {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .actions form { margin: 0; }
+    .actions .pill-btn {
+      min-width: 72px;
+      min-height: 29px;
+      padding: 4px 12px;
+      font-size: 12px;
+    }
+    .pill-danger { background: #b93b34; }
+    .pill-warn { background: #aa7b19; }
+    .empty-row {
+      padding: 34px 14px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .finance-section {
+      margin-top: 14px;
+    }
+    .section-card {
+      min-height: 78px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+    }
+    .footer {
+      padding: 10px 0 4px;
+      color: #678082;
+      text-align: center;
+      font-size: 12px;
+    }
+    .footer a {
+      display: block;
+      margin-top: 7px;
+      color: var(--teal);
+      font-weight: 800;
+    }
+    .flash {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid var(--border);
+      color: #264044;
+      font-weight: 800;
+    }
+    @media (max-width: 900px) {
+      .shell { padding: 0; }
+      .sidebar {
+        position: static;
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        border-radius: 0 0 16px 16px;
+      }
+      .side-nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .content { padding: 0 10px 14px; }
+      .topbar {
+        flex-direction: column-reverse;
+        align-items: stretch;
+      }
+      .top-actions {
+        justify-content: space-between;
+        gap: 8px;
+        overflow-x: auto;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .search-panel {
+        grid-template-columns: 1fr;
+      }
+      .quick-row { margin: 22px 0 12px; }
+      .quick-title { padding: 0; }
+    }
+    @media (max-width: 560px) {
+      .side-nav { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .page-title { font-size: 22px; }
+      th, td { font-size: 12px; padding: 10px 6px; }
+    }
   </style>
 </head>
 <body>
-<nav class="navbar navbar-dark bg-dark">
-  <div class="container-fluid">
-    <span class="navbar-brand">لوحة المالية</span>
-    <div class="d-flex gap-2">
-      <a class="btn btn-outline-light btn-sm" href="{{ url_for('change_password') }}">تغيير كلمة المرور</a>
-      <a class="btn btn-danger btn-sm" href="{{ url_for('logout') }}">تسجيل الخروج</a>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><i class="bi bi-cash-stack"></i></div>
+      <div>
+        <div class="brand-title">Saydeliti</div>
+        <span class="brand-sub">إدارة المحاسبة</span>
+      </div>
+      <a class="settings" href="{{ url_for('change_password') }}" title="تغيير كلمة المرور">
+        <i class="bi bi-gear-fill"></i>
+      </a>
     </div>
-  </div>
-</nav>
+    <nav class="side-nav" aria-label="قائمة المالية">
+      <a class="side-link {% if status_filter == 'all' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='all') }}">
+        <span class="side-icon"><i class="bi bi-grid-3x3-gap-fill"></i></span>
+        <span>الرئيسية</span>
+      </a>
+      <a class="side-link {% if status_filter == 'paid' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='paid') }}">
+        <span class="side-icon"><i class="bi bi-card-checklist"></i></span>
+        <span>قائمة الطلاب الذين دفعو</span>
+      </a>
+      <a class="side-link {% if status_filter == 'unpaid' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='unpaid') }}">
+        <span class="side-icon"><i class="bi bi-people-fill"></i></span>
+        <span>الذين عليهم دين</span>
+      </a>
+      <a class="side-link" href="#cashbox">
+        <span class="side-icon"><i class="bi bi-bank2"></i></span>
+        <span>الصندوق</span>
+      </a>
+      <a class="side-link" href="#expenses">
+        <span class="side-icon"><i class="bi bi-cash-coin"></i></span>
+        <span>المصروفات</span>
+      </a>
+      <a class="side-link" href="{{ url_for('logout') }}">
+        <span class="side-icon"><i class="bi bi-box-arrow-right"></i></span>
+        <span>خروج</span>
+      </a>
+    </nav>
+  </aside>
 
-<main class="container-fluid py-4">
-  {% with msgs=get_flashed_messages(with_categories=true) %}
-    {% for c,m in msgs %}
-      <div class="alert alert-{{c}}">{{m}}</div>
-    {% endfor %}
-  {% endwith %}
+  <main class="content">
+    <header class="topbar">
+      <div class="title-wrap">
+        <h1 class="page-title">صيدليتي <small>الهاتف: - العنوان: -</small></h1>
+      </div>
+      <div class="top-actions">
+        <a class="top-action" href="{{ url_for('finance_dashboard', status='pending') }}">
+          <span class="top-icon"><i class="bi bi-bell"></i><span class="alert-badge">{{ stats.pending or 0 }}</span></span>
+          <span>الإشعارات</span>
+        </a>
+        <a class="top-action" href="{{ url_for('logout') }}">
+          <span class="top-icon"><i class="bi bi-box-arrow-right"></i></span>
+          <span>خروج</span>
+        </a>
+        <a class="top-action" href="{{ url_for('finance_dashboard', status='unpaid') }}">
+          <span class="top-icon"><i class="bi bi-arrow-counterclockwise"></i></span>
+          <span>فواتير دين علينا</span>
+        </a>
+        <a class="top-action" href="{{ url_for('finance_dashboard', status='paid') }}">
+          <span class="top-icon"><i class="bi bi-receipt"></i></span>
+          <span>فواتير دفع لنا</span>
+        </a>
+        <a class="top-action" href="{{ url_for('finance_dashboard', status='all') }}">
+          <span class="top-icon"><i class="bi bi-currency-dollar"></i></span>
+          <span>فاتورة دفع لنا</span>
+        </a>
+      </div>
+    </header>
 
-  <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3">
-      <div class="card stat shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">كل الطلاب</div>
-          <div class="fs-3 fw-bold">{{ stats.total or 0 }}</div>
+    {% with msgs=get_flashed_messages(with_categories=true) %}
+      {% for c,m in msgs %}
+        <div class="flash">{{m}}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <section class="panel">
+      <div class="stats-grid">
+        <div class="stat-card stat-brown">
+          <span class="card-icon"><i class="bi bi-wallet2"></i></span>
+          <span>
+            <span class="stat-label">المال الموجود في الصندوق</span>
+            <span class="stat-value">MRU {{ stats.paid or 0 }}</span>
+          </span>
+        </div>
+        <div class="stat-card stat-blue">
+          <span class="card-icon"><i class="bi bi-receipt-cutoff"></i></span>
+          <span>
+            <span class="stat-label">عدد الذين دفعو</span>
+            <span class="stat-value">{{ stats.paid or 0 }}</span>
+          </span>
+        </div>
+        <div class="stat-card stat-teal">
+          <span class="card-icon"><i class="bi bi-people-fill"></i></span>
+          <span>
+            <span class="stat-label">الذين عليهم دين</span>
+            <span class="stat-value">{{ stats.unpaid or 0 }}</span>
+          </span>
+        </div>
+        <div class="stat-card stat-green">
+          <span class="card-icon"><i class="bi bi-graph-up-arrow"></i></span>
+          <span>
+            <span class="stat-label">قيد المراجعة</span>
+            <span class="stat-value">{{ stats.pending or 0 }}</span>
+          </span>
         </div>
       </div>
-    </div>
-    <div class="col-6 col-lg-3">
-      <div class="card stat shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">دفعوا</div>
-          <div class="fs-3 fw-bold text-success">{{ stats.paid or 0 }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-lg-3">
-      <div class="card stat shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">لم يدفعوا</div>
-          <div class="fs-3 fw-bold text-danger">{{ stats.unpaid or 0 }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-lg-3">
-      <div class="card stat shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">قيد المراجعة</div>
-          <div class="fs-3 fw-bold text-warning">{{ stats.pending or 0 }}</div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-    <h5 class="mb-0">حالة دفع الطلاب</h5>
-    <div class="btn-group btn-group-sm" role="group" aria-label="تصفية حالة الدفع">
-      <a class="btn btn-{% if status_filter == 'all' %}dark{% else %}outline-dark{% endif %}" href="{{ url_for('finance_dashboard', status='all') }}">الكل</a>
-      <a class="btn btn-{% if status_filter == 'pending' %}warning{% else %}outline-warning{% endif %}" href="{{ url_for('finance_dashboard', status='pending') }}">قيد المراجعة</a>
-      <a class="btn btn-{% if status_filter == 'paid' %}success{% else %}outline-success{% endif %}" href="{{ url_for('finance_dashboard', status='paid') }}">دفعوا</a>
-      <a class="btn btn-{% if status_filter == 'unpaid' %}danger{% else %}outline-danger{% endif %}" href="{{ url_for('finance_dashboard', status='unpaid') }}">لم يدفعوا</a>
-    </div>
-  </div>
+      <div class="panel search-panel">
+        <div class="section-label"><i class="bi bi-check-square-fill"></i> التحقق من حالة الطالب</div>
+        <label class="search-box">
+          <i class="bi bi-search"></i>
+          <input id="studentSearch" type="search" placeholder="ادخل اسم الطالب أو رقم الهاتف">
+        </label>
+        <button class="pill-btn" type="button" id="clearSearch"><i class="bi bi-check-circle"></i> تحقق</button>
+      </div>
+    </section>
 
-  <div class="table-responsive">
-    <table class="table table-bordered align-middle text-center bg-white shadow-sm">
-      <thead class="table-dark">
-        <tr>
-          <th>ID</th>
-          <th>الطالب</th>
-          <th>الهاتف</th>
-          <th>الدورة</th>
-          <th>حساب الطالب</th>
-          <th>حالة الدفع</th>
-          <th>إثبات الدفع</th>
-          <th>إجراء</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for student in students %}
+    <div class="quick-row">
+      <div class="quick-title">صفحات سريعة</div>
+      <a class="pill-btn" href="{{ url_for('finance_dashboard', status='all') }}"><i class="bi bi-table"></i> الرئيسية</a>
+      <a class="pill-btn" href="{{ url_for('finance_dashboard', status='paid') }}"><i class="bi bi-graph-up"></i> قائمة الطلاب الذين دفعو</a>
+      <a class="pill-btn" href="{{ url_for('finance_dashboard', status='unpaid') }}"><i class="bi bi-exclamation-triangle"></i> الذين عليهم دين</a>
+      <a class="pill-btn" href="#cashbox"><i class="bi bi-bank2"></i> الصندوق</a>
+      <a class="pill-btn" href="#expenses"><i class="bi bi-cash-coin"></i> المصروفات</a>
+    </div>
+
+    <section id="cashbox" class="wide-balance">
+      <span class="card-icon"><i class="bi bi-safe2-fill"></i></span>
+      <span>
+        <span class="stat-label">إجمالي الطلاب الذين دفعو في الصندوق</span>
+        <span class="stat-value">MRU {{ stats.paid or 0 }}</span>
+      </span>
+    </section>
+
+    <section class="panel table-panel">
+      <table>
+        <thead>
           <tr>
-            <td>{{ student.id }}</td>
-            <td>{{ student.username }}</td>
-            <td>{{ student.phone }}</td>
-            <td>{{ student.level or '-' }}</td>
-            <td>
-              {% if student.status == 'active' %}
-                <span class="badge bg-success">نشط</span>
-              {% else %}
-                <span class="badge bg-warning text-dark">في الانتظار</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if student.payment_status == 'paid' %}
-                <span><i class="status-dot dot-paid"></i>دفع</span>
-              {% elif student.payment_status == 'unpaid' %}
-                <span><i class="status-dot dot-unpaid"></i>لم يدفع</span>
-              {% else %}
-                <span><i class="status-dot dot-pending"></i>قيد المراجعة</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if student.payment_image %}
-                <a class="btn btn-outline-secondary btn-sm" target="_blank"
-                   href="{{ url_for('static', filename='uploads/payments/' + student.payment_image) }}">عرض</a>
-              {% elif student.payment_sender_phone %}
-                {{ student.payment_sender_phone }}
-              {% else %}
-                -
-              {% endif %}
-            </td>
-            <td>
-              <div class="d-flex gap-2 justify-content-center flex-wrap">
-                <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}" class="action-form">
-                  <input type="hidden" name="payment_status" value="paid">
-                  <button class="btn btn-success btn-sm w-100">دفع</button>
-                </form>
-                <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}" class="action-form">
-                  <input type="hidden" name="payment_status" value="unpaid">
-                  <button class="btn btn-danger btn-sm w-100">لم يدفع</button>
-                </form>
-                <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}" class="action-form">
-                  <input type="hidden" name="payment_status" value="pending">
-                  <button class="btn btn-warning btn-sm w-100">مراجعة</button>
-                </form>
-              </div>
-            </td>
+            <th>ID</th>
+            <th>الطالب</th>
+            <th>الهاتف</th>
+            <th>الدورة</th>
+            <th>حساب الطالب</th>
+            <th>حالة الدفع</th>
+            <th>إثبات الدفع</th>
+            <th>إجراء</th>
           </tr>
-        {% else %}
-          <tr>
-            <td colspan="8" class="text-muted py-4">لا توجد حسابات طلاب في هذا التصنيف.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</main>
+        </thead>
+        <tbody id="studentsTable">
+          {% for student in students %}
+            <tr data-search="{{ student.username }} {{ student.phone }} {{ student.level or '' }}">
+              <td>{{ student.id }}</td>
+              <td>{{ student.username }}</td>
+              <td>{{ student.phone }}</td>
+              <td>{{ student.level or '-' }}</td>
+              <td>
+                {% if student.status == 'active' %}
+                  <span class="status-chip account-active">نشط</span>
+                {% else %}
+                  <span class="status-chip pending">في الانتظار</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if student.payment_status == 'paid' %}
+                  <span class="status-chip paid">دفع</span>
+                {% elif student.payment_status == 'unpaid' %}
+                  <span class="status-chip unpaid">لم يدفع</span>
+                {% else %}
+                  <span class="status-chip pending">قيد المراجعة</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if student.payment_image %}
+                  <a class="proof-link" target="_blank"
+                     href="{{ url_for('static', filename='uploads/payments/' + student.payment_image) }}">
+                    <i class="bi bi-file-earmark-image"></i> عرض
+                  </a>
+                {% elif student.payment_sender_phone %}
+                  {{ student.payment_sender_phone }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                <div class="actions">
+                  <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}">
+                    <input type="hidden" name="payment_status" value="paid">
+                    <button class="pill-btn" type="submit">دفع</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}">
+                    <input type="hidden" name="payment_status" value="unpaid">
+                    <button class="pill-btn pill-danger" type="submit">دين</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}">
+                    <input type="hidden" name="payment_status" value="pending">
+                    <button class="pill-btn pill-warn" type="submit">مراجعة</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8" class="empty-row">لا توجد حسابات طلاب في هذا التصنيف.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section id="expenses" class="finance-section section-card">
+      <strong>المصروفات</strong>
+      <div style="margin-top:8px;color:var(--muted);font-weight:700">سيتم عرض المصروفات هنا عند إضافة جدول المصروفات.</div>
+    </section>
+
+    <footer class="footer">
+      codeva solution | saydeliyati@2026
+      <a href="#">تواصل معنا</a>
+    </footer>
+  </main>
+</div>
+
+<script>
+  const searchInput = document.getElementById('studentSearch');
+  const clearSearch = document.getElementById('clearSearch');
+  const rows = Array.from(document.querySelectorAll('#studentsTable tr[data-search]'));
+
+  function filterRows() {
+    const query = (searchInput.value || '').trim().toLowerCase();
+    rows.forEach((row) => {
+      const text = row.dataset.search.toLowerCase();
+      row.style.display = text.includes(query) ? '' : 'none';
+    });
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', filterRows);
+  }
+  if (clearSearch) {
+    clearSearch.addEventListener('click', filterRows);
+  }
+</script>
 </body>
 </html>
