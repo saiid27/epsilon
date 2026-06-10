@@ -26,20 +26,21 @@
       min-height: 100vh;
       background: var(--page);
       color: var(--text);
+      font-size: 14px;
       font-family: Tahoma, Arial, sans-serif;
     }
     a { color: inherit; text-decoration: none; }
     .shell {
       min-height: 100vh;
-      padding: 0 238px 20px 0;
+      padding: 0 202px 14px 0;
     }
     .sidebar {
       position: fixed;
       inset: 0 0 0 auto;
-      width: 222px;
+      width: 190px;
       margin: 0;
-      padding: 18px 18px;
-      border-radius: 0 0 20px 20px;
+      padding: 14px 12px;
+      border-radius: 0 0 16px 16px;
       background: linear-gradient(180deg, var(--teal-dark), #087f86 72%, #0f8990);
       color: #fff;
       box-shadow: -8px 0 22px rgba(4, 75, 84, .12);
@@ -47,10 +48,10 @@
     }
     .brand {
       display: grid;
-      grid-template-columns: 42px 1fr 30px;
+      grid-template-columns: 34px 1fr 28px;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 34px;
+      gap: 8px;
+      margin-bottom: 22px;
     }
     .brand-mark,
     .side-icon,
@@ -62,15 +63,15 @@
       background: rgba(255,255,255,.18);
     }
     .brand-mark {
-      width: 42px;
-      height: 42px;
-      font-size: 22px;
+      width: 34px;
+      height: 34px;
+      font-size: 18px;
     }
-    .brand-title { font-weight: 800; line-height: 1.1; }
-    .brand-sub { display: block; margin-top: 3px; font-size: 12px; opacity: .86; }
+    .brand-title { font-size: 14px; font-weight: 800; line-height: 1.1; }
+    .brand-sub { display: block; margin-top: 3px; font-size: 11px; opacity: .86; }
     .settings {
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       color: #fff;
       display: grid;
       place-items: center;
@@ -78,17 +79,17 @@
     }
     .side-nav {
       display: grid;
-      gap: 11px;
+      gap: 8px;
     }
     .side-link {
-      min-height: 42px;
+      min-height: 36px;
       display: grid;
-      grid-template-columns: 26px 1fr;
+      grid-template-columns: 22px 1fr;
       align-items: center;
-      gap: 10px;
-      padding: 8px 10px;
+      gap: 8px;
+      padding: 7px 8px;
       border-radius: 8px;
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 800;
       color: rgba(255,255,255,.92);
     }
@@ -98,21 +99,21 @@
       color: #fff;
     }
     .side-icon {
-      width: 26px;
-      height: 26px;
+      width: 22px;
+      height: 22px;
       background: transparent;
-      font-size: 19px;
+      font-size: 16px;
     }
     .content {
-      padding: 0 14px 0 14px;
+      padding: 0 10px;
     }
     .topbar {
-      min-height: 74px;
+      min-height: 58px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      padding: 12px 18px;
+      gap: 10px;
+      padding: 9px 14px;
       background: rgba(255,255,255,.82);
       border: 1px solid var(--border);
       border-top: 0;
@@ -121,20 +122,20 @@
     }
     .page-title {
       margin: 0;
-      font-size: 27px;
+      font-size: 22px;
       font-weight: 900;
     }
     .page-title small {
       display: block;
       margin-top: 3px;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 500;
     }
     .top-actions {
       display: flex;
       align-items: center;
-      gap: 26px;
+      gap: 15px;
       color: var(--teal-dark);
       white-space: nowrap;
     }
@@ -142,14 +143,14 @@
       display: grid;
       justify-items: center;
       gap: 4px;
-      font-size: 11px;
+      font-size: 10px;
       color: #174d54;
     }
     .top-icon {
-      width: 26px;
-      height: 26px;
+      width: 22px;
+      height: 22px;
       background: transparent;
-      font-size: 21px;
+      font-size: 17px;
       color: var(--teal-dark);
       position: relative;
     }
@@ -157,36 +158,36 @@
       position: absolute;
       top: -5px;
       left: -5px;
-      min-width: 17px;
-      height: 17px;
+      min-width: 15px;
+      height: 15px;
       padding: 0 4px;
       border-radius: 50px;
       background: #dc3545;
       color: #fff;
-      font-size: 11px;
-      line-height: 17px;
+      font-size: 10px;
+      line-height: 15px;
       text-align: center;
     }
     .panel {
-      margin-top: 12px;
+      margin-top: 9px;
       background: rgba(255,255,255,.72);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px;
+      border-radius: 12px;
+      padding: 9px;
     }
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(140px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(4, minmax(118px, 1fr));
+      gap: 8px;
     }
     .stat-card {
-      min-height: 66px;
+      min-height: 54px;
       display: grid;
-      grid-template-columns: 46px 1fr;
+      grid-template-columns: 34px 1fr;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       border-radius: 10px;
-      padding: 11px 14px;
+      padding: 8px 10px;
       color: #fff;
       overflow: hidden;
     }
@@ -195,40 +196,40 @@
     .stat-teal { background: #209180; }
     .stat-green { background: var(--green); }
     .card-icon {
-      width: 38px;
-      height: 38px;
-      font-size: 18px;
+      width: 30px;
+      height: 30px;
+      font-size: 15px;
     }
     .stat-label {
       display: block;
-      font-size: 12px;
+      font-size: 10px;
       opacity: .86;
     }
     .stat-value {
       display: block;
       margin-top: 2px;
-      font-size: 24px;
+      font-size: 19px;
       font-weight: 900;
       letter-spacing: 0;
     }
     .search-panel {
-      margin-top: 12px;
+      margin-top: 9px;
       display: grid;
-      grid-template-columns: auto minmax(220px, 1fr) auto;
-      gap: 10px;
+      grid-template-columns: auto minmax(180px, 1fr) auto;
+      gap: 8px;
       align-items: center;
-      min-height: 84px;
-      padding: 14px;
+      min-height: 62px;
+      padding: 10px;
     }
     .section-label {
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 800;
       color: #263538;
     }
     .search-box {
-      height: 43px;
+      height: 36px;
       display: grid;
-      grid-template-columns: 38px 1fr;
+      grid-template-columns: 32px 1fr;
       align-items: center;
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -246,17 +247,18 @@
       font: inherit;
     }
     .pill-btn {
-      min-height: 32px;
+      min-height: 28px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 6px 18px;
+      gap: 6px;
+      padding: 5px 13px;
       border: 0;
       border-radius: 50px;
       background: var(--teal);
       color: #fff;
       font-weight: 800;
+      font-size: 12px;
       white-space: nowrap;
       box-shadow: 0 2px 6px rgba(0, 94, 98, .12);
       cursor: pointer;
@@ -265,37 +267,37 @@
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 10px;
-      margin: 36px 38px 12px;
+      gap: 8px;
+      margin: 22px 22px 9px;
     }
     .quick-title {
       width: 100%;
-      padding-inline-start: 70px;
+      padding-inline-start: 50px;
       color: #1f3335;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
     }
     .quick-row .pill-btn {
-      min-width: 136px;
-      padding-inline: 16px;
+      min-width: 116px;
+      padding-inline: 12px;
     }
     .wide-balance {
-      min-height: 66px;
-      margin-top: 12px;
+      min-height: 54px;
+      margin-top: 9px;
       display: grid;
-      grid-template-columns: 44px 1fr;
+      grid-template-columns: 34px 1fr;
       align-items: center;
       gap: 12px;
-      padding: 12px 16px;
+      padding: 9px 12px;
       border-radius: 10px;
       background: var(--purple);
       color: #fff;
     }
     .wide-balance .stat-label { text-align: right; }
-    .wide-balance .stat-value { font-size: 25px; }
+    .wide-balance .stat-value { font-size: 20px; }
     .table-panel {
-      min-height: 156px;
-      margin-top: 12px;
+      min-height: 130px;
+      margin-top: 9px;
       padding: 0;
       overflow: hidden;
     }
@@ -305,10 +307,10 @@
       background: #fff;
     }
     th, td {
-      padding: 13px 10px;
+      padding: 9px 7px;
       border-bottom: 1px solid #e9eeee;
       text-align: center;
-      font-size: 14px;
+      font-size: 12px;
     }
     th {
       background: #f3f9f9;
@@ -319,11 +321,11 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 88px;
-      padding: 5px 10px;
+      min-width: 74px;
+      padding: 4px 8px;
       border-radius: 50px;
       font-weight: 800;
-      font-size: 12px;
+      font-size: 11px;
     }
     .paid { background: #dff4e9; color: #15734f; }
     .unpaid { background: #fde6e6; color: #b42323; }
@@ -333,8 +335,8 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      min-height: 30px;
-      padding: 5px 12px;
+      min-height: 27px;
+      padding: 4px 10px;
       border-radius: 50px;
       border: 1px solid #cfdcdd;
       color: #28555b;
@@ -344,34 +346,34 @@
       display: flex;
       justify-content: center;
       flex-wrap: wrap;
-      gap: 7px;
+      gap: 5px;
     }
     .actions form { margin: 0; }
     .actions .pill-btn {
-      min-width: 72px;
-      min-height: 29px;
-      padding: 4px 12px;
-      font-size: 12px;
+      min-width: 58px;
+      min-height: 26px;
+      padding: 3px 9px;
+      font-size: 11px;
     }
     .pill-danger { background: #b93b34; }
     .pill-warn { background: #aa7b19; }
     .empty-row {
-      padding: 34px 14px;
+      padding: 24px 12px;
       color: var(--muted);
       font-weight: 700;
     }
     .finance-section {
-      margin-top: 14px;
+      margin-top: 10px;
     }
     .section-card {
-      min-height: 78px;
-      padding: 18px;
+      min-height: 62px;
+      padding: 13px;
       border: 1px solid var(--border);
       border-radius: 12px;
       background: #fff;
     }
     .footer {
-      padding: 10px 0 4px;
+      padding: 8px 0 3px;
       color: #678082;
       text-align: center;
       font-size: 12px;
@@ -383,8 +385,8 @@
       font-weight: 800;
     }
     .flash {
-      margin-top: 12px;
-      padding: 10px 14px;
+      margin-top: 9px;
+      padding: 8px 12px;
       border-radius: 10px;
       background: #fff;
       border: 1px solid var(--border);
@@ -398,20 +400,32 @@
         width: auto;
         min-height: auto;
         margin: 0;
-        border-radius: 0 0 16px 16px;
+        padding: 10px;
+        border-radius: 0 0 14px 14px;
+      }
+      .brand {
+        margin-bottom: 10px;
       }
       .side-nav {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+      .side-link {
+        min-height: 34px;
+        font-size: 12px;
+        padding: 6px;
       }
       .content { padding: 0 10px 14px; }
       .topbar {
         flex-direction: column-reverse;
         align-items: stretch;
+        min-height: auto;
       }
       .top-actions {
-        justify-content: space-between;
+        justify-content: flex-start;
         gap: 8px;
         overflow-x: auto;
+        padding-bottom: 3px;
       }
       .stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -423,10 +437,152 @@
       .quick-title { padding: 0; }
     }
     @media (max-width: 560px) {
-      .side-nav { grid-template-columns: 1fr; }
-      .stats-grid { grid-template-columns: 1fr; }
-      .page-title { font-size: 22px; }
-      th, td { font-size: 12px; padding: 10px 6px; }
+      body { font-size: 13px; }
+      .sidebar {
+        border-radius: 0 0 12px 12px;
+      }
+      .brand {
+        grid-template-columns: 30px 1fr 28px;
+      }
+      .brand-mark {
+        width: 30px;
+        height: 30px;
+        font-size: 15px;
+      }
+      .side-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .side-link {
+        grid-template-columns: 18px 1fr;
+        min-height: 30px;
+        gap: 5px;
+        font-size: 11px;
+      }
+      .side-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 13px;
+      }
+      .content { padding: 0 7px 10px; }
+      .topbar {
+        padding: 8px 10px;
+        border-radius: 0 0 10px 10px;
+      }
+      .page-title { font-size: 19px; }
+      .top-actions {
+        gap: 10px;
+      }
+      .top-action {
+        min-width: 58px;
+        font-size: 9px;
+      }
+      .panel {
+        padding: 7px;
+        border-radius: 10px;
+      }
+      .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .stat-card {
+        min-height: 48px;
+        grid-template-columns: 26px 1fr;
+        padding: 7px;
+      }
+      .card-icon {
+        width: 24px;
+        height: 24px;
+        font-size: 12px;
+      }
+      .stat-label { font-size: 9px; }
+      .stat-value { font-size: 15px; }
+      .search-panel {
+        min-height: auto;
+      }
+      .section-label { font-size: 12px; }
+      .search-box { height: 34px; }
+      .quick-row {
+        margin: 14px 0 8px;
+        gap: 6px;
+      }
+      .quick-row .pill-btn {
+        min-width: 0;
+        flex: 1 1 calc(50% - 6px);
+        padding-inline: 8px;
+      }
+      .wide-balance {
+        min-height: 48px;
+        grid-template-columns: 26px 1fr;
+        padding: 8px;
+      }
+      .wide-balance .stat-value { font-size: 16px; }
+      .table-panel {
+        padding: 7px;
+        background: transparent;
+        border: 0;
+      }
+      table,
+      thead,
+      tbody,
+      tr,
+      th,
+      td {
+        display: block;
+      }
+      table {
+        background: transparent;
+      }
+      thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+      }
+      tbody {
+        display: grid;
+        gap: 8px;
+      }
+      tr[data-search] {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #fff;
+        padding: 7px;
+        box-shadow: 0 2px 8px rgba(5, 77, 83, .05);
+      }
+      td {
+        min-height: 30px;
+        display: grid;
+        grid-template-columns: 92px 1fr;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 4px;
+        border-bottom: 1px solid #edf3f3;
+        text-align: right;
+        font-size: 12px;
+      }
+      td:last-child {
+        border-bottom: 0;
+      }
+      td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-weight: 800;
+        font-size: 11px;
+      }
+      .actions {
+        justify-content: flex-start;
+      }
+      .actions .pill-btn {
+        min-width: 54px;
+      }
+      .empty-row {
+        display: block;
+        background: #fff;
+        border-radius: 10px;
+        text-align: center;
+      }
+      .empty-row::before {
+        content: "";
+      }
+      .section-card {
+        padding: 10px;
+      }
     }
   </style>
 </head>
@@ -582,18 +738,18 @@
         <tbody id="studentsTable">
           {% for student in students %}
             <tr data-search="{{ student.username }} {{ student.phone }} {{ student.level or '' }}">
-              <td>{{ student.id }}</td>
-              <td>{{ student.username }}</td>
-              <td>{{ student.phone }}</td>
-              <td>{{ student.level or '-' }}</td>
-              <td>
+              <td data-label="ID">{{ student.id }}</td>
+              <td data-label="الطالب">{{ student.username }}</td>
+              <td data-label="الهاتف">{{ student.phone }}</td>
+              <td data-label="الدورة">{{ student.level or '-' }}</td>
+              <td data-label="حساب الطالب">
                 {% if student.status == 'active' %}
                   <span class="status-chip account-active">نشط</span>
                 {% else %}
                   <span class="status-chip pending">في الانتظار</span>
                 {% endif %}
               </td>
-              <td>
+              <td data-label="حالة الدفع">
                 {% if student.payment_status == 'paid' %}
                   <span class="status-chip paid">دفع</span>
                 {% elif student.payment_status == 'unpaid' %}
@@ -602,7 +758,7 @@
                   <span class="status-chip pending">قيد المراجعة</span>
                 {% endif %}
               </td>
-              <td>
+              <td data-label="إثبات الدفع">
                 {% if student.payment_image %}
                   <a class="proof-link" target="_blank"
                      href="{{ url_for('static', filename='uploads/payments/' + student.payment_image) }}">
@@ -614,7 +770,7 @@
                   -
                 {% endif %}
               </td>
-              <td>
+              <td data-label="إجراء">
                 <div class="actions">
                   <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}">
                     <input type="hidden" name="payment_status" value="paid">
