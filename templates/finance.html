@@ -988,6 +988,7 @@
         {% endfor %}
       </div>
 
+      {% if near_category %}
       <form class="form-grid" method="POST" action="{{ url_for('finance_add_in_person_student') }}" style="margin-top:10px">
         <div class="field field-wide">
           <label>اسم الطالب</label>
@@ -998,13 +999,8 @@
           <input name="phone" placeholder="رقم الهاتف">
         </div>
         <div class="field">
-          <label>الدورة</label>
-          <input name="course_name" list="financeCategoryNames" required placeholder="مثلا: رياضيات">
-          <datalist id="financeCategoryNames">
-            {% for item in finance_categories %}
-              <option value="{{ item.name }}">{{ 'دورة' if item.category_type == 'course' else 'قسم' }}</option>
-            {% endfor %}
-          </datalist>
+          <label>الدورة أو القسم</label>
+          <input name="course_name" required value="{{ near_category }}" readonly>
         </div>
         <div class="field">
           <label>القسط الشهري</label>
@@ -1032,7 +1028,6 @@
         <button class="pill-btn" type="submit"><i class="bi bi-calendar-check"></i> عرض الشهر</button>
       </form>
 
-      {% if near_category %}
       <div class="near-summary">
         <div class="mini-stat"><span>طلاب عن قرب</span>{{ near_stats.total or 0 }}</div>
         <div class="mini-stat"><span>دفعوا هذا الشهر</span>{{ near_stats.paid_this_month or 0 }}</div>
@@ -1111,6 +1106,8 @@
           {% endfor %}
         </div>
       </div>
+      {% else %}
+      <div class="history-item" style="margin-top:10px">اختر قسمًا أو دورة من الأعلى لعرض الطلاب وإضافة طالب جديد داخلها.</div>
       {% endif %}
     </section>
     {% endif %}
