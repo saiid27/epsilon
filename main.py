@@ -692,6 +692,16 @@ def ensure_courses_table():
             )
         """)
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS finance_categories (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(120) NOT NULL,
+                category_type VARCHAR(20) NOT NULL,
+                active BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (name, category_type)
+            )
+        """)
+        cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_lessons_level_subject
             ON lessons (level, subject, uploaded_at DESC)
         """)
@@ -714,6 +724,10 @@ def ensure_courses_table():
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_in_person_payments_student_month
             ON in_person_payments (student_id, month_label)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_finance_categories_active_type
+            ON finance_categories (active, category_type, name)
         """)
         if not table_exists:
             for index, course in enumerate(COURSES, start=1):
@@ -1173,6 +1187,15 @@ def finance_dashboard():
             LIMIT 40
         """)
         in_person_payments = cur.fetchall()
+        cur.execute("""
+            SELECT id, name, category_type, created_at
+            FROM finance_categories
+            WHERE active=TRUE
+            ORDER BY
+                CASE category_type WHEN 'course' THEN 1 WHEN 'section' THEN 2 ELSE 3 END,
+                name ASC
+        """)
+        finance_categories = cur.fetchall()
         cur.close()
 
     near_stats = {"total": len(in_person_students), "paid_this_month": 0, "debt_total": 0}
@@ -1193,6 +1216,7 @@ def finance_dashboard():
                            selected_month=selected_month,
                            in_person_students=in_person_students,
                            in_person_payments=in_person_payments,
+                           finance_categories=finance_categories,
                            near_stats=near_stats)
 
 @app.post("/finance/users/<int:uid>/payment")
@@ -1286,6 +1310,42 @@ def finance_deactivate_in_person_student(student_id):
         cur.close()
     flash("تم إخفاء الطالب من قائمة عن قرب.", "warning")
     return redirect(url_for("finance_dashboard") + "#near-students")
+
+@app.post("/finance/categories/add")
+@finance_login_required
+def finance_add_category():
+    name = request.form.get("name", "").strip()
+    category_type = request.form.get("category_type", "").strip()
+    if not name or category_type not in {"course", "section"}:
+        flash("اسم القسم أو الدورة والنوعية مطلوبة.", "danger")
+        return redirect(url_for("finance_dashboard") + "#finance-categories")
+    try:
+        with db() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO finance_categories (name, category_type, active)
+                VALUES (%s,%s,TRUE)
+                ON CONFLICT (name, category_type)
+                DO UPDATE SET active=TRUE
+            """, (name, category_type))
+            conn.commit()
+            cur.close()
+        flash("تمت إضافة القسم أو الدورة.", "success")
+    except IntegrityError:
+        flash("هذا الاسم موجود بالفعل.", "warning")
+    return redirect(url_for("finance_dashboard") + "#finance-categories")
+
+@app.post("/finance/categories/<int:category_id>/delete")
+@finance_login_required
+def finance_delete_category(category_id):
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE finance_categories SET active=FALSE WHERE id=%s", (category_id,))
+        updated = cur.rowcount
+        conn.commit()
+        cur.close()
+    flash("تم حذف الدورة أو القسم." if updated else "لم يتم العثور على العنصر.", "warning" if updated else "danger")
+    return redirect(url_for("finance_dashboard") + "#finance-categories")
 
 @app.route("/admin/lessons/create", methods=["POST"])
 @admin_login_required

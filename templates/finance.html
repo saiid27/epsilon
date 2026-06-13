@@ -390,6 +390,36 @@
       font-size: 12px;
       font-weight: 800;
     }
+    .category-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .category-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fbfefe;
+      padding: 9px 10px;
+    }
+    .category-name {
+      font-weight: 900;
+    }
+    .category-type {
+      display: inline-flex;
+      width: fit-content;
+      margin-top: 4px;
+      padding: 3px 8px;
+      border-radius: 50px;
+      background: #eaf6f6;
+      color: var(--teal-dark);
+      font-size: 11px;
+      font-weight: 800;
+    }
     .footer {
       padding: 8px 0 3px;
       color: #678082;
@@ -592,6 +622,12 @@
         align-items: flex-start;
         flex-direction: column;
       }
+      .category-list {
+        grid-template-columns: 1fr;
+      }
+      .category-item {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -620,6 +656,10 @@
       <a class="side-link" href="#near-students">
         <span class="side-icon"><i class="bi bi-person-plus-fill"></i></span>
         <span>طلاب عن قرب</span>
+      </a>
+      <a class="side-link" href="#finance-categories">
+        <span class="side-icon"><i class="bi bi-folder-plus"></i></span>
+        <span>الأقسام والدورات</span>
       </a>
       <a class="side-link {% if status_filter == 'paid' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='paid') }}">
         <span class="side-icon"><i class="bi bi-card-checklist"></i></span>
@@ -655,6 +695,40 @@
       <a class="tab-card" href="#remote-students"><i class="bi bi-wifi"></i> دورات عن بعد</a>
       <a class="tab-card" href="#near-students"><i class="bi bi-person-lines-fill"></i> دورات عن قرب</a>
     </div>
+
+    <section id="finance-categories" class="finance-section section-card">
+      <strong>الأقسام والدورات المتوفرة</strong>
+      <form class="form-grid" method="POST" action="{{ url_for('finance_add_category') }}" style="margin-top:10px">
+        <div class="field field-wide">
+          <label>اسم القسم أو الدورة</label>
+          <input name="name" required placeholder="مثلا: رياضيات / دورة باك">
+        </div>
+        <div class="field">
+          <label>النوعية</label>
+          <select name="category_type" required style="height:34px;border:1px solid var(--border);border-radius:8px;background:#fbfefe;padding:0 9px;font:inherit">
+            <option value="course">دورة</option>
+            <option value="section">قسم</option>
+          </select>
+        </div>
+        <button class="pill-btn" type="submit"><i class="bi bi-plus-circle"></i> إضافة</button>
+      </form>
+
+      <div class="category-list">
+        {% for item in finance_categories %}
+          <div class="category-item">
+            <div>
+              <div class="category-name">{{ item.name }}</div>
+              <span class="category-type">{{ 'دورة' if item.category_type == 'course' else 'قسم' }}</span>
+            </div>
+            <form method="POST" action="{{ url_for('finance_delete_category', category_id=item.id) }}">
+              <button class="pill-btn pill-danger" type="submit">حذف</button>
+            </form>
+          </div>
+        {% else %}
+          <div class="history-item">لا توجد أقسام أو دورات مضافة بعد.</div>
+        {% endfor %}
+      </div>
+    </section>
 
     <section class="panel">
       <div class="stats-grid">
@@ -803,7 +877,12 @@
         </div>
         <div class="field">
           <label>الدورة</label>
-          <input name="course_name" required placeholder="مثلا: رياضيات">
+          <input name="course_name" list="financeCategoryNames" required placeholder="مثلا: رياضيات">
+          <datalist id="financeCategoryNames">
+            {% for item in finance_categories %}
+              <option value="{{ item.name }}">{{ 'دورة' if item.category_type == 'course' else 'قسم' }}</option>
+            {% endfor %}
+          </datalist>
         </div>
         <div class="field">
           <label>القسط الشهري</label>

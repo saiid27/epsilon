@@ -47,6 +47,15 @@ CREATE TABLE IF NOT EXISTS in_person_payments (
   UNIQUE (student_id, month_label)
 );
 
+CREATE TABLE IF NOT EXISTS finance_categories (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  category_type VARCHAR(20) NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (name, category_type)
+);
+
 CREATE INDEX IF NOT EXISTS idx_verification_codes_lookup
   ON verification_codes (phone, purpose, code, used, expires_at);
 
