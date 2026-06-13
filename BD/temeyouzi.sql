@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS in_person_students (
   course_name VARCHAR(100) NOT NULL DEFAULT '',
   monthly_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
   start_month VARCHAR(7) NOT NULL,
+  delivery_type VARCHAR(20) NOT NULL DEFAULT 'near',
   notes TEXT,
   active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

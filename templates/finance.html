@@ -637,7 +637,7 @@
     <div class="brand">
       <div class="brand-mark"><i class="bi bi-cash-stack"></i></div>
       <div>
-        <div class="brand-title">Saydeliti</div>
+        <div class="brand-title">Epsilon Education</div>
         <span class="brand-sub">إدارة المحاسبة</span>
       </div>
       <a class="settings" href="{{ url_for('change_password') }}" title="تغيير كلمة المرور">
@@ -754,81 +754,114 @@
     </section>
 
     {% if remote_category %}
-    <section class="panel table-panel">
-      <div class="section-label" style="padding:9px 10px">طلاب: {{ remote_category }}</div>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>الطالب</th>
-            <th>الهاتف</th>
-            <th>الدورة</th>
-            <th>حساب الطالب</th>
-            <th>حالة الدفع</th>
-            <th>إثبات الدفع</th>
-            <th>إجراء</th>
-          </tr>
-        </thead>
-        <tbody id="studentsTable">
-          {% for student in students %}
-            <tr data-search="{{ student.username }} {{ student.phone }} {{ student.level or '' }}">
-              <td data-label="ID">{{ student.id }}</td>
-              <td data-label="الطالب">{{ student.username }}</td>
-              <td data-label="الهاتف">{{ student.phone }}</td>
-              <td data-label="الدورة">{{ student.level or '-' }}</td>
-              <td data-label="حساب الطالب">
-                {% if student.status == 'active' %}
-                  <span class="status-chip account-active">نشط</span>
-                {% else %}
-                  <span class="status-chip pending">في الانتظار</span>
-                {% endif %}
-              </td>
-              <td data-label="حالة الدفع">
-                {% if student.payment_status == 'paid' %}
-                  <span class="status-chip paid">دفع</span>
-                {% elif student.payment_status == 'unpaid' %}
-                  <span class="status-chip unpaid">لم يدفع</span>
-                {% else %}
-                  <span class="status-chip pending">قيد المراجعة</span>
-                {% endif %}
-              </td>
-              <td data-label="إثبات الدفع">
-                {% if student.payment_image %}
-                  <a class="proof-link" target="_blank"
-                     href="{{ url_for('static', filename='uploads/payments/' + student.payment_image) }}">
-                    <i class="bi bi-file-earmark-image"></i> عرض
-                  </a>
-                {% elif student.payment_sender_phone %}
-                  {{ student.payment_sender_phone }}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="إجراء">
-                <div class="actions">
-                  <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}">
-                    <input type="hidden" name="payment_status" value="paid">
-                    <button class="pill-btn" type="submit">دفع</button>
-                  </form>
-                  <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}">
-                    <input type="hidden" name="payment_status" value="unpaid">
-                    <button class="pill-btn pill-danger" type="submit">دين</button>
-                  </form>
-                  <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}">
-                    <input type="hidden" name="payment_status" value="pending">
-                    <button class="pill-btn pill-warn" type="submit">مراجعة</button>
-                  </form>
-                </div>
-              </td>
-            </tr>
-          {% else %}
+    <section class="finance-section section-card">
+      <strong>طلاب عن بعد: {{ remote_category }}</strong>
+      <form class="form-grid" method="POST" action="{{ url_for('finance_add_in_person_student') }}" style="margin-top:10px">
+        <input type="hidden" name="delivery_type" value="remote">
+        <div class="field field-wide">
+          <label>اسم الطالب</label>
+          <input name="full_name" required placeholder="اسم الطالب كامل">
+        </div>
+        <div class="field">
+          <label>الهاتف</label>
+          <input name="phone" placeholder="رقم الهاتف">
+        </div>
+        <div class="field">
+          <label>الدورة أو القسم</label>
+          <input name="course_name" required value="{{ remote_category }}" readonly>
+        </div>
+        <div class="field">
+          <label>القسط الشهري</label>
+          <input name="monthly_amount" type="number" min="0" step="1" value="0">
+        </div>
+        <div class="field">
+          <label>شهر البداية</label>
+          <input name="start_month" type="month" value="{{ selected_month }}" required>
+        </div>
+        <div class="field field-wide">
+          <label>ملاحظات</label>
+          <input name="notes" placeholder="اختياري">
+        </div>
+        <button class="pill-btn" type="submit"><i class="bi bi-plus-circle"></i> إضافة طالب</button>
+      </form>
+
+      <form class="form-grid" method="GET" action="{{ url_for('finance_dashboard') }}" style="margin-top:12px">
+        <input type="hidden" name="view" value="remote">
+        <input type="hidden" name="category" value="{{ remote_category }}">
+        <div class="field">
+          <label>الشهر المعروض</label>
+          <input name="month" type="month" value="{{ selected_month }}">
+        </div>
+        <button class="pill-btn" type="submit"><i class="bi bi-calendar-check"></i> عرض الشهر</button>
+      </form>
+
+      <div class="near-summary">
+        <div class="mini-stat"><span>طلاب عن بعد</span>{{ near_stats.total or 0 }}</div>
+        <div class="mini-stat"><span>دفعوا هذا الشهر</span>{{ near_stats.paid_this_month or 0 }}</div>
+        <div class="mini-stat"><span>المستحقات</span>MRU {{ "%.0f"|format(near_stats.debt_total or 0) }}</div>
+      </div>
+
+      <div class="panel table-panel">
+        <div class="section-label" style="padding:9px 10px">طلاب عن بعد: {{ remote_category }}</div>
+        <table>
+          <thead>
             <tr>
-              <td colspan="8" class="empty-row">لا يوجد طلاب في هذا القسم أو الدورة.</td>
+              <th>الطالب</th>
+              <th>الهاتف</th>
+              <th>الدورة</th>
+              <th>القسط</th>
+              <th>شهر البداية</th>
+              <th>حالة {{ selected_month }}</th>
+              <th>الأشهر غير المدفوعة</th>
+              <th>المستحقات</th>
+              <th>إجراء</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody id="studentsTable">
+            {% for student in in_person_students %}
+              <tr data-search="{{ student.full_name }} {{ student.phone or '' }} {{ student.course_name }}">
+                <td data-label="الطالب">{{ student.full_name }}</td>
+                <td data-label="الهاتف">{{ student.phone or '-' }}</td>
+                <td data-label="الدورة">{{ student.course_name }}</td>
+                <td data-label="القسط">MRU {{ "%.0f"|format(student.monthly_amount or 0) }}</td>
+                <td data-label="شهر البداية">{{ student.start_month }}</td>
+                <td data-label="حالة الشهر">
+                  {% if student.paid_current_month %}
+                    <span class="status-chip paid">دفع</span>
+                  {% else %}
+                    <span class="status-chip unpaid">دين</span>
+                  {% endif %}
+                </td>
+                <td data-label="غير المدفوعة">{{ student.unpaid_months }}</td>
+                <td data-label="المستحقات">MRU {{ "%.0f"|format(student.total_due or 0) }}</td>
+                <td data-label="إجراء">
+                  <div class="actions">
+                    <form method="POST" action="{{ url_for('finance_add_in_person_payment', student_id=student.id) }}">
+                      <input type="hidden" name="month_label" value="{{ selected_month }}">
+                      <input type="hidden" name="amount" value="{{ student.monthly_amount or 0 }}">
+                      <input type="hidden" name="near_category" value="{{ remote_category }}">
+                      <input type="hidden" name="return_view" value="remote">
+                      <button class="pill-btn" type="submit">دفع الشهر</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('finance_deactivate_in_person_student', student_id=student.id) }}">
+                      <input type="hidden" name="near_category" value="{{ remote_category }}">
+                      <input type="hidden" name="return_view" value="remote">
+                      <button class="pill-btn pill-danger" type="submit">إخفاء</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="9" class="empty-row">لا يوجد طلاب عن بعد في هذا القسم أو الدورة.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </section>
+    {% else %}
+    <div class="history-item" style="margin-top:10px">اختر قسمًا أو دورة من الأعلى لعرض الطلاب وإضافة طالب جديد داخلها.</div>
     {% endif %}
     {% endif %}
 
@@ -1118,8 +1151,8 @@
     </section>
 
     <footer class="footer">
-      codeva solution | saydeliyati@2026
-      <a href="#">تواصل معنا</a>
+      med said mohameden  | epsilon@2026
+    
     </footer>
   </main>
 </div>

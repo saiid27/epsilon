@@ -675,11 +675,14 @@ def ensure_courses_table():
                 course_name VARCHAR(100) NOT NULL DEFAULT '',
                 monthly_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
                 start_month VARCHAR(7) NOT NULL,
+                delivery_type VARCHAR(20) NOT NULL DEFAULT 'near',
                 notes TEXT,
                 active BOOLEAN NOT NULL DEFAULT TRUE,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        cur.execute("ALTER TABLE in_person_students ADD COLUMN IF NOT EXISTS delivery_type VARCHAR(20) DEFAULT 'near'")
+        cur.execute("UPDATE in_person_students SET delivery_type='near' WHERE delivery_type IS NULL")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS in_person_payments (
                 id SERIAL PRIMARY KEY,
@@ -1134,47 +1137,24 @@ def finance_dashboard():
 
     with db() as conn:
         cur = dict_cursor(conn)
-        clauses = ["role='student'"]
-        params = []
-        if status_filter != "all":
-            clauses.append("payment_status=%s")
-            params.append(status_filter)
-        if view_mode == "remote" and remote_category:
-            clauses.append("(level=%s OR subject=%s)")
-            params.extend([remote_category, remote_category])
-        elif view_mode == "remote":
-            clauses.append("1=0")
-        where = " AND ".join(clauses)
-        cur.execute(f"""
-            SELECT id, username, phone, level, status, phone_verified,
-                   payment_image, payment_sender_phone, payment_status, created_at
-            FROM users
-            WHERE {where}
-            ORDER BY
-                CASE payment_status
-                    WHEN 'pending' THEN 1
-                    WHEN 'unpaid' THEN 2
-                    WHEN 'paid' THEN 3
-                    ELSE 4
-                END,
-                created_at DESC,
-                id DESC
-        """, params)
-        students = cur.fetchall()
+        students = []
         cur.execute("""
             SELECT
-                COUNT(*) FILTER (WHERE role='student') AS total,
-                COUNT(*) FILTER (WHERE role='student' AND payment_status='paid') AS paid,
-                COUNT(*) FILTER (WHERE role='student' AND payment_status='unpaid') AS unpaid,
-                COUNT(*) FILTER (WHERE role='student' AND payment_status='pending') AS pending
-            FROM users
+                COUNT(*) FILTER (WHERE active=TRUE) AS total,
+                COUNT(*) FILTER (WHERE active=TRUE AND delivery_type='remote') AS remote,
+                COUNT(*) FILTER (WHERE active=TRUE AND delivery_type='near') AS near
+            FROM in_person_students
         """)
         stats = cur.fetchone()
         near_clauses = ["s.active=TRUE"]
         near_params = [selected_month]
-        if view_mode == "near" and near_category:
+        selected_delivery_type = "remote" if view_mode == "remote" else "near"
+        near_clauses.append("s.delivery_type=%s")
+        near_params.append(selected_delivery_type)
+        selected_manual_category = remote_category if view_mode == "remote" else near_category
+        if view_mode in {"near", "remote"} and selected_manual_category:
             near_clauses.append("s.course_name=%s")
-            near_params.append(near_category)
+            near_params.append(selected_manual_category)
         near_where = " AND ".join(near_clauses)
         cur.execute(f"""
             SELECT s.*,
@@ -1197,9 +1177,11 @@ def finance_dashboard():
         in_person_students = cur.fetchall()
         payment_clauses = []
         payment_params = []
-        if view_mode == "near" and near_category:
+        payment_clauses.append("s.delivery_type=%s")
+        payment_params.append(selected_delivery_type)
+        if view_mode in {"near", "remote"} and selected_manual_category:
             payment_clauses.append("s.course_name=%s")
-            payment_params.append(near_category)
+            payment_params.append(selected_manual_category)
         payment_where = "WHERE " + " AND ".join(payment_clauses) if payment_clauses else ""
         cur.execute(f"""
             SELECT p.*, s.full_name
@@ -1220,23 +1202,19 @@ def finance_dashboard():
         """)
         finance_categories = cur.fetchall()
         cur.execute("""
-            SELECT DISTINCT level AS name, 'course' AS category_type
-            FROM users
-            WHERE role='student' AND level IS NOT NULL AND level <> ''
-            UNION
-            SELECT DISTINCT subject AS name, 'section' AS category_type
-            FROM users
-            WHERE role='student' AND subject IS NOT NULL AND subject <> ''
-            ORDER BY category_type, name
-        """)
-        student_categories = cur.fetchall()
-        cur.execute("""
             SELECT DISTINCT course_name AS name, 'course' AS category_type
             FROM in_person_students
-            WHERE active=TRUE AND course_name IS NOT NULL AND course_name <> ''
+            WHERE active=TRUE AND delivery_type='near' AND course_name IS NOT NULL AND course_name <> ''
             ORDER BY name
         """)
         near_student_categories = cur.fetchall()
+        cur.execute("""
+            SELECT DISTINCT course_name AS name, 'course' AS category_type
+            FROM in_person_students
+            WHERE active=TRUE AND delivery_type='remote' AND course_name IS NOT NULL AND course_name <> ''
+            ORDER BY name
+        """)
+        remote_student_categories = cur.fetchall()
         cur.close()
 
     near_stats = {"total": len(in_person_students), "paid_this_month": 0, "debt_total": 0}
@@ -1251,10 +1229,13 @@ def finance_dashboard():
         if student["paid_current_month"]:
             near_stats["paid_this_month"] += 1
         near_stats["debt_total"] += student["total_due"]
+    stats["paid"] = near_stats["paid_this_month"]
+    stats["unpaid"] = max((stats.get("total") or 0) - near_stats["paid_this_month"], 0)
+    stats["pending"] = 0
 
     remote_categories = []
     seen_remote_categories = set()
-    for source in (finance_categories, student_categories):
+    for source in (finance_categories, remote_student_categories):
         for item in source:
             key = (item["name"], item["category_type"])
             if key in seen_remote_categories:
@@ -1317,6 +1298,9 @@ def finance_add_in_person_student():
     full_name = request.form.get("full_name", "").strip()
     phone = request.form.get("phone", "").strip() or None
     course_name = request.form.get("course_name", "").strip()
+    delivery_type = request.form.get("delivery_type", "near").strip()
+    if delivery_type not in {"near", "remote"}:
+        delivery_type = "near"
     monthly_amount = request.form.get("monthly_amount", "0").strip() or "0"
     start_month = request.form.get("start_month", current_month_label()).strip()
     notes = request.form.get("notes", "").strip() or None
@@ -1331,11 +1315,14 @@ def finance_add_in_person_student():
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO in_person_students
-                (full_name, phone, course_name, monthly_amount, start_month, notes)
-            VALUES (%s,%s,%s,%s,%s,%s)
-        """, (full_name, phone, course_name, amount, start_month, notes))
+                (full_name, phone, course_name, monthly_amount, start_month, delivery_type, notes)
+            VALUES (%s,%s,%s,%s,%s,%s,%s)
+        """, (full_name, phone, course_name, amount, start_month, delivery_type, notes))
         conn.commit()
         cur.close()
+    if delivery_type == "remote":
+        flash("تمت إضافة طالب عن بعد.", "success")
+        return redirect(url_for("finance_dashboard", view="remote", category=course_name, month=start_month) + "#remote-students")
     flash("تمت إضافة طالب عن قرب.", "success")
     return redirect(url_for("finance_dashboard", view="near", near_category=course_name, month=start_month) + "#near-students")
 
@@ -1345,6 +1332,7 @@ def finance_add_in_person_payment(student_id):
     month_label = request.form.get("month_label", current_month_label()).strip()
     amount = request.form.get("amount", "").strip()
     near_category = request.form.get("near_category", "").strip()
+    return_view = request.form.get("return_view", "near").strip()
     if not re.match(r"^\d{4}-\d{2}$", month_label):
         flash("الشهر غير صحيح.", "danger")
         return redirect(url_for("finance_dashboard"))
@@ -1355,6 +1343,8 @@ def finance_add_in_person_payment(student_id):
         if not student:
             cur.close()
             flash("لم يتم العثور على الطالب.", "warning")
+            if return_view == "remote":
+                return redirect(url_for("finance_dashboard", view="remote", category=near_category, month=month_label) + "#remote-students")
             return redirect(url_for("finance_dashboard", view="near", near_category=near_category, month=month_label) + "#near-students")
         try:
             payment_amount = float(amount) if amount else float(student.get("monthly_amount") or 0)
@@ -1371,18 +1361,24 @@ def finance_add_in_person_payment(student_id):
         conn.commit()
         cur.close()
     flash("تم تسجيل دفع الشهر.", "success")
+    if return_view == "remote":
+        return redirect(url_for("finance_dashboard", view="remote", category=near_category, month=month_label) + "#remote-students")
     return redirect(url_for("finance_dashboard", view="near", near_category=near_category, month=month_label) + "#near-students")
 
 @app.post("/finance/in-person/<int:student_id>/deactivate")
 @finance_login_required
 def finance_deactivate_in_person_student(student_id):
     near_category = request.form.get("near_category", "").strip()
+    return_view = request.form.get("return_view", "near").strip()
     with db() as conn:
         cur = conn.cursor()
         cur.execute("UPDATE in_person_students SET active=FALSE WHERE id=%s", (student_id,))
         conn.commit()
         cur.close()
     flash("تم إخفاء الطالب من قائمة عن قرب.", "warning")
+    if return_view == "remote":
+        flash("تم إخفاء الطالب من قائمة عن بعد.", "warning")
+        return redirect(url_for("finance_dashboard", view="remote", category=near_category) + "#remote-students")
     return redirect(url_for("finance_dashboard", view="near", near_category=near_category) + "#near-students")
 
 @app.post("/finance/categories/add")
