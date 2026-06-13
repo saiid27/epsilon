@@ -55,7 +55,6 @@
     }
     .brand-mark,
     .side-icon,
-    .top-icon,
     .card-icon {
       display: grid;
       place-items: center;
@@ -106,67 +105,6 @@
     }
     .content {
       padding: 0 10px;
-    }
-    .topbar {
-      min-height: 58px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 14px;
-      background: rgba(255,255,255,.82);
-      border: 1px solid var(--border);
-      border-top: 0;
-      border-radius: 0 0 14px 14px;
-      box-shadow: 0 2px 10px rgba(5, 77, 83, .06);
-    }
-    .page-title {
-      margin: 0;
-      font-size: 22px;
-      font-weight: 900;
-    }
-    .page-title small {
-      display: block;
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 500;
-    }
-    .top-actions {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      color: var(--teal-dark);
-      white-space: nowrap;
-    }
-    .top-action {
-      display: grid;
-      justify-items: center;
-      gap: 4px;
-      font-size: 10px;
-      color: #174d54;
-    }
-    .top-icon {
-      width: 22px;
-      height: 22px;
-      background: transparent;
-      font-size: 17px;
-      color: var(--teal-dark);
-      position: relative;
-    }
-    .alert-badge {
-      position: absolute;
-      top: -5px;
-      left: -5px;
-      min-width: 15px;
-      height: 15px;
-      padding: 0 4px;
-      border-radius: 50px;
-      background: #dc3545;
-      color: #fff;
-      font-size: 10px;
-      line-height: 15px;
-      text-align: center;
     }
     .panel {
       margin-top: 9px;
@@ -496,17 +434,6 @@
         padding: 6px;
       }
       .content { padding: 0 10px 14px; }
-      .topbar {
-        flex-direction: column-reverse;
-        align-items: stretch;
-        min-height: auto;
-      }
-      .top-actions {
-        justify-content: flex-start;
-        gap: 8px;
-        overflow-x: auto;
-        padding-bottom: 3px;
-      }
       .stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -542,18 +469,6 @@
         font-size: 13px;
       }
       .content { padding: 0 7px 10px; }
-      .topbar {
-        padding: 8px 10px;
-        border-radius: 0 0 10px 10px;
-      }
-      .page-title { font-size: 19px; }
-      .top-actions {
-        gap: 10px;
-      }
-      .top-action {
-        min-width: 58px;
-        font-size: 9px;
-      }
       .panel {
         padding: 7px;
         border-radius: 10px;
@@ -730,34 +645,6 @@
   </aside>
 
   <main class="content">
-    <header class="topbar">
-      <div class="title-wrap">
-        <h1 class="page-title">صيدليتي <small>الهاتف: - العنوان: -</small></h1>
-      </div>
-      <div class="top-actions">
-        <a class="top-action" href="{{ url_for('finance_dashboard', status='pending') }}">
-          <span class="top-icon"><i class="bi bi-bell"></i><span class="alert-badge">{{ stats.pending or 0 }}</span></span>
-          <span>الإشعارات</span>
-        </a>
-        <a class="top-action" href="{{ url_for('logout') }}">
-          <span class="top-icon"><i class="bi bi-box-arrow-right"></i></span>
-          <span>خروج</span>
-        </a>
-        <a class="top-action" href="{{ url_for('finance_dashboard', status='unpaid') }}">
-          <span class="top-icon"><i class="bi bi-arrow-counterclockwise"></i></span>
-          <span>فواتير دين علينا</span>
-        </a>
-        <a class="top-action" href="{{ url_for('finance_dashboard', status='paid') }}">
-          <span class="top-icon"><i class="bi bi-receipt"></i></span>
-          <span>فواتير دفع لنا</span>
-        </a>
-        <a class="top-action" href="{{ url_for('finance_dashboard', status='all') }}">
-          <span class="top-icon"><i class="bi bi-currency-dollar"></i></span>
-          <span>فاتورة دفع لنا</span>
-        </a>
-      </div>
-    </header>
-
     {% with msgs=get_flashed_messages(with_categories=true) %}
       {% for c,m in msgs %}
         <div class="flash">{{m}}</div>
