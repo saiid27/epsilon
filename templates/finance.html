@@ -645,27 +645,27 @@
       </a>
     </div>
     <nav class="side-nav" aria-label="قائمة المالية">
-      <a class="side-link {% if status_filter == 'all' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='all') }}">
+      <a class="side-link {% if view_mode == 'dashboard' and status_filter == 'all' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='all') }}">
         <span class="side-icon"><i class="bi bi-grid-3x3-gap-fill"></i></span>
         <span>الرئيسية</span>
       </a>
-      <a class="side-link" href="#remote-students">
+      <a class="side-link {% if view_mode == 'remote' %}active{% endif %}" href="{{ url_for('finance_dashboard', view='remote') }}">
         <span class="side-icon"><i class="bi bi-wifi"></i></span>
         <span>طلاب عن بعد</span>
       </a>
-      <a class="side-link" href="#near-students">
+      <a class="side-link {% if view_mode == 'near' %}active{% endif %}" href="{{ url_for('finance_dashboard', view='near', month=selected_month) }}#near-students">
         <span class="side-icon"><i class="bi bi-person-plus-fill"></i></span>
         <span>طلاب عن قرب</span>
       </a>
-      <a class="side-link" href="#finance-categories">
+      <a class="side-link {% if view_mode == 'categories' %}active{% endif %}" href="{{ url_for('finance_dashboard', view='categories') }}#finance-categories">
         <span class="side-icon"><i class="bi bi-folder-plus"></i></span>
         <span>الأقسام والدورات</span>
       </a>
-      <a class="side-link {% if status_filter == 'paid' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='paid') }}">
+      <a class="side-link {% if view_mode == 'dashboard' and status_filter == 'paid' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='paid') }}">
         <span class="side-icon"><i class="bi bi-card-checklist"></i></span>
         <span>قائمة الطلاب الذين دفعو</span>
       </a>
-      <a class="side-link {% if status_filter == 'unpaid' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='unpaid') }}">
+      <a class="side-link {% if view_mode == 'dashboard' and status_filter == 'unpaid' %}active{% endif %}" href="{{ url_for('finance_dashboard', status='unpaid') }}">
         <span class="side-icon"><i class="bi bi-people-fill"></i></span>
         <span>الذين عليهم دين</span>
       </a>
@@ -692,10 +692,11 @@
     {% endwith %}
 
     <div class="tabs-row">
-      <a class="tab-card" href="#remote-students"><i class="bi bi-wifi"></i> دورات عن بعد</a>
-      <a class="tab-card" href="#near-students"><i class="bi bi-person-lines-fill"></i> دورات عن قرب</a>
+      <a class="tab-card" href="{{ url_for('finance_dashboard', view='remote') }}"><i class="bi bi-wifi"></i> دورات عن بعد</a>
+      <a class="tab-card" href="{{ url_for('finance_dashboard', view='near', month=selected_month) }}#near-students"><i class="bi bi-person-lines-fill"></i> دورات عن قرب</a>
     </div>
 
+    {% if view_mode == 'categories' %}
     <section id="finance-categories" class="finance-section section-card">
       <strong>الأقسام والدورات المتوفرة</strong>
       <form class="form-grid" method="POST" action="{{ url_for('finance_add_category') }}" style="margin-top:10px">
@@ -729,7 +730,109 @@
         {% endfor %}
       </div>
     </section>
+    {% endif %}
 
+    {% if view_mode == 'remote' %}
+    <section id="remote-students" class="finance-section section-card">
+      <strong>طلاب عن بعد</strong>
+      <div style="margin-top:6px;color:var(--muted);font-weight:800;font-size:12px">
+        اختر قسمًا أو دورة لعرض الطلاب التابعين له فقط.
+      </div>
+      <div class="category-list">
+        {% for item in remote_categories %}
+          <a class="category-item" href="{{ url_for('finance_dashboard', view='remote', category=item.name) }}#remote-students">
+            <div>
+              <div class="category-name">{{ item.name }}</div>
+              <span class="category-type">{{ 'دورة' if item.category_type == 'course' else 'قسم' }}</span>
+            </div>
+            <span class="pill-btn">دخول</span>
+          </a>
+        {% else %}
+          <div class="history-item">لا توجد أقسام أو دورات مرتبطة بطلاب عن بعد بعد.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    {% if remote_category %}
+    <section class="panel table-panel">
+      <div class="section-label" style="padding:9px 10px">طلاب: {{ remote_category }}</div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>الطالب</th>
+            <th>الهاتف</th>
+            <th>الدورة</th>
+            <th>حساب الطالب</th>
+            <th>حالة الدفع</th>
+            <th>إثبات الدفع</th>
+            <th>إجراء</th>
+          </tr>
+        </thead>
+        <tbody id="studentsTable">
+          {% for student in students %}
+            <tr data-search="{{ student.username }} {{ student.phone }} {{ student.level or '' }}">
+              <td data-label="ID">{{ student.id }}</td>
+              <td data-label="الطالب">{{ student.username }}</td>
+              <td data-label="الهاتف">{{ student.phone }}</td>
+              <td data-label="الدورة">{{ student.level or '-' }}</td>
+              <td data-label="حساب الطالب">
+                {% if student.status == 'active' %}
+                  <span class="status-chip account-active">نشط</span>
+                {% else %}
+                  <span class="status-chip pending">في الانتظار</span>
+                {% endif %}
+              </td>
+              <td data-label="حالة الدفع">
+                {% if student.payment_status == 'paid' %}
+                  <span class="status-chip paid">دفع</span>
+                {% elif student.payment_status == 'unpaid' %}
+                  <span class="status-chip unpaid">لم يدفع</span>
+                {% else %}
+                  <span class="status-chip pending">قيد المراجعة</span>
+                {% endif %}
+              </td>
+              <td data-label="إثبات الدفع">
+                {% if student.payment_image %}
+                  <a class="proof-link" target="_blank"
+                     href="{{ url_for('static', filename='uploads/payments/' + student.payment_image) }}">
+                    <i class="bi bi-file-earmark-image"></i> عرض
+                  </a>
+                {% elif student.payment_sender_phone %}
+                  {{ student.payment_sender_phone }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td data-label="إجراء">
+                <div class="actions">
+                  <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}">
+                    <input type="hidden" name="payment_status" value="paid">
+                    <button class="pill-btn" type="submit">دفع</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}">
+                    <input type="hidden" name="payment_status" value="unpaid">
+                    <button class="pill-btn pill-danger" type="submit">دين</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('finance_update_payment', uid=student.id) }}">
+                    <input type="hidden" name="payment_status" value="pending">
+                    <button class="pill-btn pill-warn" type="submit">مراجعة</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8" class="empty-row">لا يوجد طلاب في هذا القسم أو الدورة.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+    {% endif %}
+
+    {% if view_mode == 'dashboard' %}
     <section class="panel">
       <div class="stats-grid">
         <div class="stat-card stat-brown">
@@ -863,7 +966,9 @@
         </tbody>
       </table>
     </section>
+    {% endif %}
 
+    {% if view_mode == 'near' %}
     <section id="near-students" class="finance-section section-card">
       <strong>طلاب عن قرب</strong>
       <form class="form-grid" method="POST" action="{{ url_for('finance_add_in_person_student') }}" style="margin-top:10px">
@@ -900,6 +1005,7 @@
       </form>
 
       <form class="form-grid" method="GET" action="{{ url_for('finance_dashboard') }}" style="margin-top:12px">
+        <input type="hidden" name="view" value="near">
         <input type="hidden" name="status" value="{{ status_filter }}">
         <div class="field">
           <label>الشهر المعروض</label>
@@ -982,6 +1088,7 @@
         </div>
       </div>
     </section>
+    {% endif %}
 
     <section id="expenses" class="finance-section section-card">
       <strong>المصروفات</strong>
