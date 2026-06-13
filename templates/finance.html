@@ -971,6 +971,23 @@
     {% if view_mode == 'near' %}
     <section id="near-students" class="finance-section section-card">
       <strong>طلاب عن قرب</strong>
+      <div style="margin-top:6px;color:var(--muted);font-weight:800;font-size:12px">
+        اختر قسمًا أو دورة لعرض طلاب عن قرب التابعين لها فقط.
+      </div>
+      <div class="category-list">
+        {% for item in near_categories %}
+          <a class="category-item" href="{{ url_for('finance_dashboard', view='near', near_category=item.name, month=selected_month) }}#near-students">
+            <div>
+              <div class="category-name">{{ item.name }}</div>
+              <span class="category-type">{{ 'دورة' if item.category_type == 'course' else 'قسم' }}</span>
+            </div>
+            <span class="pill-btn">دخول</span>
+          </a>
+        {% else %}
+          <div class="history-item">أضف قسمًا أو دورة من صفحة الأقسام والدورات ثم أضف الطلاب إليها.</div>
+        {% endfor %}
+      </div>
+
       <form class="form-grid" method="POST" action="{{ url_for('finance_add_in_person_student') }}" style="margin-top:10px">
         <div class="field field-wide">
           <label>اسم الطالب</label>
@@ -1006,6 +1023,7 @@
 
       <form class="form-grid" method="GET" action="{{ url_for('finance_dashboard') }}" style="margin-top:12px">
         <input type="hidden" name="view" value="near">
+        <input type="hidden" name="near_category" value="{{ near_category }}">
         <input type="hidden" name="status" value="{{ status_filter }}">
         <div class="field">
           <label>الشهر المعروض</label>
@@ -1014,6 +1032,7 @@
         <button class="pill-btn" type="submit"><i class="bi bi-calendar-check"></i> عرض الشهر</button>
       </form>
 
+      {% if near_category %}
       <div class="near-summary">
         <div class="mini-stat"><span>طلاب عن قرب</span>{{ near_stats.total or 0 }}</div>
         <div class="mini-stat"><span>دفعوا هذا الشهر</span>{{ near_stats.paid_this_month or 0 }}</div>
@@ -1021,6 +1040,7 @@
       </div>
 
       <div class="panel table-panel">
+        <div class="section-label" style="padding:9px 10px">طلاب عن قرب: {{ near_category }}</div>
         <table>
           <thead>
             <tr>
@@ -1057,9 +1077,11 @@
                     <form method="POST" action="{{ url_for('finance_add_in_person_payment', student_id=student.id) }}">
                       <input type="hidden" name="month_label" value="{{ selected_month }}">
                       <input type="hidden" name="amount" value="{{ student.monthly_amount or 0 }}">
+                      <input type="hidden" name="near_category" value="{{ near_category }}">
                       <button class="pill-btn" type="submit">دفع الشهر</button>
                     </form>
                     <form method="POST" action="{{ url_for('finance_deactivate_in_person_student', student_id=student.id) }}">
+                      <input type="hidden" name="near_category" value="{{ near_category }}">
                       <button class="pill-btn pill-danger" type="submit">إخفاء</button>
                     </form>
                   </div>
@@ -1073,7 +1095,9 @@
           </tbody>
         </table>
       </div>
+      {% endif %}
 
+      {% if near_category %}
       <div class="finance-section">
         <strong>سجل الدفعات الشهرية</strong>
         <div class="history-list" style="margin-top:8px">
@@ -1087,6 +1111,7 @@
           {% endfor %}
         </div>
       </div>
+      {% endif %}
     </section>
     {% endif %}
 

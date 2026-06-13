@@ -1123,6 +1123,7 @@ def finance_dashboard():
     if view_mode not in {"dashboard", "remote", "near", "categories"}:
         view_mode = "dashboard"
     remote_category = request.args.get("category", "").strip()
+    near_category = request.args.get("near_category", "").strip()
     status_filter = request.args.get("status", "all").strip()
     valid_filters = {"all", "paid", "unpaid", "pending"}
     if status_filter not in valid_filters:
@@ -1169,7 +1170,13 @@ def finance_dashboard():
             FROM users
         """)
         stats = cur.fetchone()
-        cur.execute("""
+        near_clauses = ["s.active=TRUE"]
+        near_params = [selected_month]
+        if view_mode == "near" and near_category:
+            near_clauses.append("s.course_name=%s")
+            near_params.append(near_category)
+        near_where = " AND ".join(near_clauses)
+        cur.execute(f"""
             SELECT s.*,
                    COALESCE(paid_counts.paid_months, 0) AS paid_months,
                    month_payment.id AS current_payment_id,
@@ -1184,17 +1191,24 @@ def finance_dashboard():
             LEFT JOIN in_person_payments month_payment
                    ON month_payment.student_id = s.id
                   AND month_payment.month_label = %s
-            WHERE s.active=TRUE
+            WHERE {near_where}
             ORDER BY s.created_at DESC, s.id DESC
-        """, (selected_month,))
+        """, near_params)
         in_person_students = cur.fetchall()
-        cur.execute("""
+        payment_clauses = []
+        payment_params = []
+        if view_mode == "near" and near_category:
+            payment_clauses.append("s.course_name=%s")
+            payment_params.append(near_category)
+        payment_where = "WHERE " + " AND ".join(payment_clauses) if payment_clauses else ""
+        cur.execute(f"""
             SELECT p.*, s.full_name
             FROM in_person_payments p
             JOIN in_person_students s ON s.id = p.student_id
+            {payment_where}
             ORDER BY p.month_label DESC, p.paid_at DESC, p.id DESC
             LIMIT 40
-        """)
+        """, payment_params)
         in_person_payments = cur.fetchall()
         cur.execute("""
             SELECT id, name, category_type, created_at
@@ -1216,6 +1230,13 @@ def finance_dashboard():
             ORDER BY category_type, name
         """)
         student_categories = cur.fetchall()
+        cur.execute("""
+            SELECT DISTINCT course_name AS name, 'course' AS category_type
+            FROM in_person_students
+            WHERE active=TRUE AND course_name IS NOT NULL AND course_name <> ''
+            ORDER BY name
+        """)
+        near_student_categories = cur.fetchall()
         cur.close()
 
     near_stats = {"total": len(in_person_students), "paid_this_month": 0, "debt_total": 0}
@@ -1244,11 +1265,26 @@ def finance_dashboard():
                 "category_type": item["category_type"],
             })
 
+    near_categories = []
+    seen_near_categories = set()
+    for source in (finance_categories, near_student_categories):
+        for item in source:
+            key = (item["name"], item["category_type"])
+            if key in seen_near_categories:
+                continue
+            seen_near_categories.add(key)
+            near_categories.append({
+                "name": item["name"],
+                "category_type": item["category_type"],
+            })
+
     return render_template("finance.html", students=students, stats=stats,
                            status_filter=status_filter,
                            view_mode=view_mode,
                            remote_category=remote_category,
+                           near_category=near_category,
                            remote_categories=remote_categories,
+                           near_categories=near_categories,
                            selected_month=selected_month,
                            in_person_students=in_person_students,
                            in_person_payments=in_person_payments,
@@ -1301,13 +1337,14 @@ def finance_add_in_person_student():
         conn.commit()
         cur.close()
     flash("تمت إضافة طالب عن قرب.", "success")
-    return redirect(url_for("finance_dashboard", view="near", month=start_month) + "#near-students")
+    return redirect(url_for("finance_dashboard", view="near", near_category=course_name, month=start_month) + "#near-students")
 
 @app.post("/finance/in-person/<int:student_id>/pay")
 @finance_login_required
 def finance_add_in_person_payment(student_id):
     month_label = request.form.get("month_label", current_month_label()).strip()
     amount = request.form.get("amount", "").strip()
+    near_category = request.form.get("near_category", "").strip()
     if not re.match(r"^\d{4}-\d{2}$", month_label):
         flash("الشهر غير صحيح.", "danger")
         return redirect(url_for("finance_dashboard"))
@@ -1318,7 +1355,7 @@ def finance_add_in_person_payment(student_id):
         if not student:
             cur.close()
             flash("لم يتم العثور على الطالب.", "warning")
-            return redirect(url_for("finance_dashboard", view="near", month=month_label) + "#near-students")
+            return redirect(url_for("finance_dashboard", view="near", near_category=near_category, month=month_label) + "#near-students")
         try:
             payment_amount = float(amount) if amount else float(student.get("monthly_amount") or 0)
         except ValueError:
@@ -1334,18 +1371,19 @@ def finance_add_in_person_payment(student_id):
         conn.commit()
         cur.close()
     flash("تم تسجيل دفع الشهر.", "success")
-    return redirect(url_for("finance_dashboard", view="near", month=month_label) + "#near-students")
+    return redirect(url_for("finance_dashboard", view="near", near_category=near_category, month=month_label) + "#near-students")
 
 @app.post("/finance/in-person/<int:student_id>/deactivate")
 @finance_login_required
 def finance_deactivate_in_person_student(student_id):
+    near_category = request.form.get("near_category", "").strip()
     with db() as conn:
         cur = conn.cursor()
         cur.execute("UPDATE in_person_students SET active=FALSE WHERE id=%s", (student_id,))
         conn.commit()
         cur.close()
     flash("تم إخفاء الطالب من قائمة عن قرب.", "warning")
-    return redirect(url_for("finance_dashboard", view="near") + "#near-students")
+    return redirect(url_for("finance_dashboard", view="near", near_category=near_category) + "#near-students")
 
 @app.post("/finance/categories/add")
 @finance_login_required
