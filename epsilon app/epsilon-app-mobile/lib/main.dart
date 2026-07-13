@@ -3509,7 +3509,7 @@ class _NationalResultSearchPageState extends State<NationalResultSearchPage> {
     } catch (error) {
       debugPrint('Celebration sound skipped: $error');
     }
-    celebrationTimer = Timer(const Duration(milliseconds: 3200), () {
+    celebrationTimer = Timer(const Duration(milliseconds: 5200), () {
       if (mounted) {
         setState(() => showCelebration = false);
       }
@@ -3862,7 +3862,7 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
     super.initState();
     controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2600),
+      duration: const Duration(milliseconds: 4600),
     )..forward();
   }
 
@@ -3907,35 +3907,41 @@ class CelebrationPainter extends CustomPainter {
     if (size.isEmpty) {
       return;
     }
-    final fade = (1 - progress).clamp(0.0, 1.0);
+    final fadeIn = (progress / 0.12).clamp(0.0, 1.0);
+    final fadeOut = ((1 - progress) / 0.22).clamp(0.0, 1.0);
+    final opacity = min(fadeIn, fadeOut);
     final paint = Paint();
 
-    for (var i = 0; i < 110; i++) {
-      final random = Random(i * 73);
-      final fromLeft = i.isEven;
-      final startX = fromLeft ? -24.0 : size.width + 24.0;
-      final baseY = size.height * (0.12 + random.nextDouble() * 0.2);
-      final direction = fromLeft ? 1.0 : -1.0;
-      final speed = 0.55 + random.nextDouble() * 0.9;
-      final arc = sin(progress * pi);
-      final x =
-          startX +
-          direction * size.width * progress * speed +
-          sin(progress * pi * 2 + i) * 30;
+    for (var i = 0; i < 190; i++) {
+      final random = Random(i * 97);
+      final delay = random.nextDouble() * 0.34;
+      final local = ((progress - delay) / (1 - delay)).clamp(0.0, 1.0);
+      if (local <= 0) {
+        continue;
+      }
+      final drift = sin((local * 2.8 + random.nextDouble()) * pi) * 26;
+      final x = size.width * random.nextDouble() + drift;
       final y =
-          baseY +
-          size.height * progress * (0.44 + random.nextDouble() * 0.42) -
-          arc * size.height * (0.18 + random.nextDouble() * 0.12);
-      final angle = progress * pi * (2 + random.nextDouble() * 5);
-      final width = 7.0 + random.nextDouble() * 7;
-      final height = 4.0 + random.nextDouble() * 9;
+          -32 +
+          size.height * (0.18 + random.nextDouble() * 0.84) * local +
+          24 * sin((local + random.nextDouble()) * pi * 2);
+      final angle = local * pi * (2 + random.nextDouble() * 6);
+      final width = 5.0 + random.nextDouble() * 10;
+      final height = 4.0 + random.nextDouble() * 12;
+      final alpha = opacity * (0.55 + random.nextDouble() * 0.45);
 
-      paint.color = colors[i % colors.length].withValues(alpha: fade);
+      paint.color = colors[i % colors.length].withValues(alpha: alpha);
       canvas.save();
       canvas.translate(x, y);
       canvas.rotate(angle);
-      if (i % 5 == 0) {
-        canvas.drawCircle(Offset.zero, width * 0.48, paint);
+      if (i % 3 == 0) {
+        canvas.drawCircle(Offset.zero, width * 0.55, paint);
+      } else if (i % 7 == 0) {
+        paint
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.2;
+        canvas.drawCircle(Offset.zero, width * 0.72, paint);
+        paint.style = PaintingStyle.fill;
       } else {
         canvas.drawRRect(
           RRect.fromRectAndRadius(
