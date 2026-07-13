@@ -10,7 +10,7 @@ from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 import psycopg2
 from psycopg2 import IntegrityError
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, execute_values
 
 # ===== Sortie console UTF-8 (Windows) =====
 try:
@@ -2207,36 +2207,48 @@ def parse_results_workbook(file_storage):
 
 def insert_national_results(exam_type, filename, parsed_rows, uploaded_by):
     filename = db_text(filename, 255) or "results.xlsx"
+    values = [
+        (
+            exam_type,
+            db_text(row.get("candidate_number"), 80),
+            db_text(row.get("full_name"), 255),
+            db_text(row.get("birth_place"), 160),
+            db_text(row.get("birth_date"), 80),
+            db_text(row.get("wilaya"), 160),
+            db_text(row.get("moughataa"), 160),
+            db_text(row.get("center_name"), 255),
+            db_text(row.get("score"), 80),
+            db_text(row.get("decision"), 160),
+            db_text(row.get("rank"), 80),
+            json.dumps(row.get("raw_data") or {}, ensure_ascii=False),
+        )
+        for row in parsed_rows
+        if db_text(row.get("full_name"), 255)
+    ]
+    if not values:
+        raise ValueError("لم يتم العثور على أسماء صالحة داخل ملف Excel.")
     with db() as conn:
         cur = dict_cursor(conn)
         cur.execute("""
             INSERT INTO result_uploads (exam_type, original_filename, rows_imported, uploaded_by)
             VALUES (%s,%s,%s,%s)
             RETURNING id, uploaded_at
-        """, (exam_type, filename, len(parsed_rows), uploaded_by))
+        """, (exam_type, filename, len(values), uploaded_by))
         upload = cur.fetchone()
         cur.execute("DELETE FROM national_exam_results WHERE exam_type=%s", (exam_type,))
-        for row in parsed_rows:
-            cur.execute("""
+        rows_with_upload = [row + (upload["id"],) for row in values]
+        execute_values(
+            cur,
+            """
                 INSERT INTO national_exam_results
                     (exam_type, candidate_number, full_name, birth_place, birth_date,
                      wilaya, moughataa, center_name, score, decision, rank, raw_data, upload_id)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s)
-            """, (
-                exam_type,
-                db_text(row.get("candidate_number"), 80),
-                db_text(row.get("full_name"), 255),
-                db_text(row.get("birth_place"), 160),
-                db_text(row.get("birth_date"), 80),
-                db_text(row.get("wilaya"), 160),
-                db_text(row.get("moughataa"), 160),
-                db_text(row.get("center_name"), 255),
-                db_text(row.get("score"), 80),
-                db_text(row.get("decision"), 160),
-                db_text(row.get("rank"), 80),
-                json.dumps(row.get("raw_data") or {}, ensure_ascii=False),
-                upload["id"],
-            ))
+                VALUES %s
+            """,
+            rows_with_upload,
+            template="(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s)",
+            page_size=1000,
+        )
         conn.commit()
         cur.close()
     return upload
