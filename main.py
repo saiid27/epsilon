@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-import os, random, time, sys, socket, hashlib, re, json, unicodedata
+import os, random, time, sys, socket, hashlib, re, json, unicodedata, csv
+from io import StringIO
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 from functools import wraps
@@ -10,7 +11,7 @@ from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 import psycopg2
 from psycopg2 import IntegrityError
-from psycopg2.extras import RealDictCursor, execute_values
+from psycopg2.extras import RealDictCursor
 
 # ===== Sortie console UTF-8 (Windows) =====
 try:
@@ -2140,6 +2141,19 @@ def excel_cell_text(value):
         return text[:-2]
     return text
 
+def result_score_text(value):
+    if value is None:
+        return ""
+    if isinstance(value, (int, float)):
+        if float(value).is_integer():
+            number = int(value)
+            if number == 0:
+                return "0"
+            if abs(number) >= 100000:
+                return f"{number / 1000000:.6f}".rstrip("0").rstrip(".").replace(".", ",")
+        return str(value).replace(".", ",")
+    return excel_cell_text(value)
+
 def db_text(value, max_length=None):
     text = excel_cell_text(value)
     if not text:
@@ -2195,6 +2209,8 @@ def parse_results_workbook(file_storage):
                 raw[header_by_index[index]] = text
             field = field_by_index.get(index)
             if field and text:
+                if field == "score":
+                    text = result_score_text(value)
                 parsed[field] = text
         if not parsed.get("full_name") and not parsed.get("candidate_number"):
             continue
@@ -2228,30 +2244,28 @@ def insert_national_results(exam_type, filename, parsed_rows, uploaded_by):
     if not values:
         raise ValueError("لم يتم العثور على أسماء صالحة داخل ملف Excel.")
     with db() as conn:
-        cur = dict_cursor(conn)
+        cur = conn.cursor()
         cur.execute("""
             INSERT INTO result_uploads (exam_type, original_filename, rows_imported, uploaded_by)
             VALUES (%s,%s,%s,%s)
             RETURNING id, uploaded_at
         """, (exam_type, filename, len(values), uploaded_by))
-        upload = cur.fetchone()
+        upload_id, uploaded_at = cur.fetchone()
         cur.execute("DELETE FROM national_exam_results WHERE exam_type=%s", (exam_type,))
-        rows_with_upload = [row + (upload["id"],) for row in values]
-        execute_values(
-            cur,
-            """
-                INSERT INTO national_exam_results
-                    (exam_type, candidate_number, full_name, birth_place, birth_date,
-                     wilaya, moughataa, center_name, score, decision, rank, raw_data, upload_id)
-                VALUES %s
-            """,
-            rows_with_upload,
-            template="(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s)",
-            page_size=1000,
-        )
+        buffer = StringIO()
+        writer = csv.writer(buffer)
+        for row in values:
+            writer.writerow(row + (upload_id,))
+        buffer.seek(0)
+        cur.copy_expert("""
+            COPY national_exam_results
+                (exam_type, candidate_number, full_name, birth_place, birth_date,
+                 wilaya, moughataa, center_name, score, decision, rank, raw_data, upload_id)
+            FROM STDIN WITH (FORMAT CSV)
+        """, buffer)
         conn.commit()
         cur.close()
-    return upload
+    return {"id": upload_id, "uploaded_at": uploaded_at}
 
 def api_result_payload(row):
     return {
