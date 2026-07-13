@@ -3631,20 +3631,248 @@ class NationalResultCard extends StatelessWidget {
 
   final NationalExamResult result;
 
+  ResultDecisionStyle get decisionStyle {
+    final normalized = result.decision.trim().toLowerCase();
+    if (normalized.contains('sessionnaire')) {
+      return const ResultDecisionStyle(
+        title: 'أنت مؤهل للدورة الثانية',
+        subtitle: 'فرصتك ما زالت قائمة، ركز جيداً واستعد بثقة للمرحلة القادمة',
+        color: Color(0xFF2563EB),
+        background: Color(0xFFEFF6FF),
+        border: Color(0xFFBFDBFE),
+        icon: Icons.auto_awesome_rounded,
+      );
+    }
+    if (normalized.contains('admis') || normalized.contains('ناجح')) {
+      return const ResultDecisionStyle(
+        title: 'مبروك! لقد نجحت',
+        subtitle: 'نتمنى لك مستقبلاً موفقاً ومشرقاً',
+        color: Color(0xFF149255),
+        background: Color(0xFFEFFAF3),
+        border: Color(0xFFBFE8CF),
+        icon: Icons.verified_rounded,
+      );
+    }
+    return const ResultDecisionStyle(
+      title: 'لم توفق هذه المرة',
+      subtitle: 'ليست النهاية، اجعلها بداية أقوى واستعد للمحاولة القادمة',
+      color: Color(0xFFB45309),
+      background: Color(0xFFFFF7ED),
+      border: Color(0xFFFED7AA),
+      icon: Icons.favorite_rounded,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
-      title: result.fullName,
-      icon: Icons.fact_check_rounded,
-      child: Column(
+    final style = decisionStyle;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: style.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: style.border),
+          ),
+          child: Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: style.color,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(style.icon, color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      style.title,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: style.color,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      style.subtitle,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: Color(0xFF475569),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                textDirection: TextDirection.rtl,
+                children: [
+                  const Icon(
+                    Icons.badge_rounded,
+                    color: Color(0xFF2457D6),
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'بيانات المترشح',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: Color(0xFF1E3A8A),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ResultDataRow(
+                icon: Icons.person_outline_rounded,
+                label: 'الاسم الكامل',
+                value: result.fullName,
+              ),
+              ResultDataRow(
+                icon: Icons.confirmation_number_outlined,
+                label: 'رقم المترشح',
+                value: result.candidateNumber,
+              ),
+              ResultDataRow(
+                icon: Icons.account_balance_rounded,
+                label: 'مركز الامتحان',
+                value: result.centerName,
+              ),
+              ResultDataRow(
+                icon: Icons.location_on_outlined,
+                label: 'الولاية',
+                value: result.wilaya,
+              ),
+              ResultDataRow(
+                icon: Icons.query_stats_rounded,
+                label: 'المعدل',
+                value: result.score,
+              ),
+              ResultDataRow(
+                icon: Icons.fact_check_outlined,
+                label: 'القرار',
+                value: result.decision,
+              ),
+              ResultDataRow(
+                icon: Icons.workspace_premium_outlined,
+                label: 'الرتبة',
+                value: result.rank,
+                isLast: true,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class ResultDecisionStyle {
+  const ResultDecisionStyle({
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.background,
+    required this.border,
+    required this.icon,
+  });
+
+  final String title;
+  final String subtitle;
+  final Color color;
+  final Color background;
+  final Color border;
+  final IconData icon;
+}
+
+class ResultDataRow extends StatelessWidget {
+  const ResultDataRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.isLast = false,
+    super.key,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    if (value.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 10, top: isLast ? 0 : 2),
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 10),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+      ),
+      child: Row(
+        textDirection: TextDirection.rtl,
         children: [
-          ResultInfoRow(label: 'رقم المترشح', value: result.candidateNumber),
-          ResultInfoRow(label: 'الاسم الكامل', value: result.fullName),
-          ResultInfoRow(label: 'المركز', value: result.centerName),
-          ResultInfoRow(label: 'المعدل', value: result.score),
-          ResultInfoRow(label: 'الولاية', value: result.wilaya),
-          ResultInfoRow(label: 'القرار', value: result.decision),
-          ResultInfoRow(label: 'الرتبة', value: result.rank),
+          Icon(icon, color: const Color(0xFF2457D6), size: 20),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 108,
+            child: Text(
+              label,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Color(0xFF475569),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.left,
+              style: const TextStyle(
+                color: Color(0xFF111827),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ],
       ),
     );
