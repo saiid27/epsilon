@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -3466,13 +3467,24 @@ class NationalResultSearchPage extends StatefulWidget {
 
 class _NationalResultSearchPageState extends State<NationalResultSearchPage> {
   final queryController = TextEditingController();
+  late final AudioPlayer applausePlayer;
+  Timer? celebrationTimer;
   List<NationalExamResult> results = [];
   bool isSearching = false;
   bool isUploading = false;
+  bool showCelebration = false;
   String? message;
 
   @override
+  void initState() {
+    super.initState();
+    applausePlayer = AudioPlayer();
+  }
+
+  @override
   void dispose() {
+    celebrationTimer?.cancel();
+    applausePlayer.dispose();
     queryController.dispose();
     super.dispose();
   }
@@ -3480,6 +3492,28 @@ class _NationalResultSearchPageState extends State<NationalResultSearchPage> {
   bool get canUpload {
     final user = StoreScope.of(context).currentUser;
     return user?.role == UserRole.admin;
+  }
+
+  bool isSuccessfulResult(NationalExamResult result) {
+    final decision = result.decision.trim().toLowerCase();
+    return decision.contains('admis') || decision.contains('ناجح');
+  }
+
+  Future<void> triggerCelebration() async {
+    celebrationTimer?.cancel();
+    setState(() => showCelebration = true);
+    try {
+      await applausePlayer.stop();
+      await applausePlayer.setVolume(1);
+      await applausePlayer.play(AssetSource('sounds/applause.wav'));
+    } catch (error) {
+      debugPrint('Celebration sound skipped: $error');
+    }
+    celebrationTimer = Timer(const Duration(milliseconds: 3200), () {
+      if (mounted) {
+        setState(() => showCelebration = false);
+      }
+    });
   }
 
   Future<void> search() async {
@@ -3504,6 +3538,9 @@ class _NationalResultSearchPageState extends State<NationalResultSearchPage> {
         results = found;
         message = found.isEmpty ? 'لم يتم العثور على نتيجة مطابقة.' : null;
       });
+      if (found.any(isSuccessfulResult)) {
+        await triggerCelebration();
+      }
     } catch (error) {
       setState(() => message = error.toString());
     } finally {
@@ -3555,72 +3592,79 @@ class _NationalResultSearchPageState extends State<NationalResultSearchPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FF),
       appBar: EpsilonAppBar(title: widget.title, showLogout: false),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      body: Stack(
         children: [
-          HeaderPanel(
-            title: 'نتائج ${widget.title}',
-            subtitle: 'ابحث برقم المترشح أو الاسم الكامل',
-            icon: widget.icon,
-          ),
-          const SizedBox(height: 16),
-          SectionCard(
-            title: 'البحث عن نتيجة',
-            icon: Icons.search_rounded,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextField(
-                  controller: queryController,
-                  textInputAction: TextInputAction.search,
-                  onSubmitted: (_) => search(),
-                  decoration: const InputDecoration(
-                    labelText: 'رقم المترشح أو الاسم الكامل',
-                    prefixIcon: Icon(Icons.badge_rounded),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: isSearching ? null : search,
-                  icon: isSearching
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.search_rounded),
-                  label: const Text('بحث'),
-                ),
-                if (canUpload) ...[
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: isUploading ? null : uploadExcel,
-                    icon: isUploading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.upload_file_rounded),
-                    label: const Text('رفع ملف Excel للنتائج'),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (message != null) ...[
-            const SizedBox(height: 14),
-            EmptyState(text: message!),
-          ],
-          if (results.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            ...results.map(
-              (result) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: NationalResultCard(result: result),
+          ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            children: [
+              HeaderPanel(
+                title: 'نتائج ${widget.title}',
+                subtitle: 'ابحث برقم المترشح أو الاسم الكامل',
+                icon: widget.icon,
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              SectionCard(
+                title: 'البحث عن نتيجة',
+                icon: Icons.search_rounded,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: queryController,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => search(),
+                      decoration: const InputDecoration(
+                        labelText: 'رقم المترشح أو الاسم الكامل',
+                        prefixIcon: Icon(Icons.badge_rounded),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: isSearching ? null : search,
+                      icon: isSearching
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.search_rounded),
+                      label: const Text('بحث'),
+                    ),
+                    if (canUpload) ...[
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: isUploading ? null : uploadExcel,
+                        icon: isUploading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.upload_file_rounded),
+                        label: const Text('رفع ملف Excel للنتائج'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (message != null) ...[
+                const SizedBox(height: 14),
+                EmptyState(text: message!),
+              ],
+              if (results.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                ...results.map(
+                  (result) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: NationalResultCard(result: result),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (showCelebration) const CelebrationOverlay(),
         ],
       ),
     );
@@ -3799,6 +3843,115 @@ class NationalResultCard extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class CelebrationOverlay extends StatefulWidget {
+  const CelebrationOverlay({super.key});
+
+  @override
+  State<CelebrationOverlay> createState() => _CelebrationOverlayState();
+}
+
+class _CelebrationOverlayState extends State<CelebrationOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, _) {
+          return CustomPaint(
+            painter: CelebrationPainter(progress: controller.value),
+            size: Size.infinite,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class CelebrationPainter extends CustomPainter {
+  const CelebrationPainter({required this.progress});
+
+  final double progress;
+
+  static const colors = [
+    Color(0xFF149255),
+    Color(0xFF2457D6),
+    Color(0xFFF59E0B),
+    Color(0xFFEF4444),
+    Color(0xFF8B5CF6),
+    Color(0xFF06B6D4),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) {
+      return;
+    }
+    final fade = (1 - progress).clamp(0.0, 1.0);
+    final paint = Paint();
+
+    for (var i = 0; i < 110; i++) {
+      final random = Random(i * 73);
+      final fromLeft = i.isEven;
+      final startX = fromLeft ? -24.0 : size.width + 24.0;
+      final baseY = size.height * (0.12 + random.nextDouble() * 0.2);
+      final direction = fromLeft ? 1.0 : -1.0;
+      final speed = 0.55 + random.nextDouble() * 0.9;
+      final arc = sin(progress * pi);
+      final x =
+          startX +
+          direction * size.width * progress * speed +
+          sin(progress * pi * 2 + i) * 30;
+      final y =
+          baseY +
+          size.height * progress * (0.44 + random.nextDouble() * 0.42) -
+          arc * size.height * (0.18 + random.nextDouble() * 0.12);
+      final angle = progress * pi * (2 + random.nextDouble() * 5);
+      final width = 7.0 + random.nextDouble() * 7;
+      final height = 4.0 + random.nextDouble() * 9;
+
+      paint.color = colors[i % colors.length].withValues(alpha: fade);
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(angle);
+      if (i % 5 == 0) {
+        canvas.drawCircle(Offset.zero, width * 0.48, paint);
+      } else {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset.zero, width: width, height: height),
+            const Radius.circular(1.5),
+          ),
+          paint,
+        );
+      }
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CelebrationPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 
