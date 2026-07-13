@@ -1222,38 +1222,12 @@ def admin_upload_results():
         return redirect(url_for("admin_dashboard") + "#national-results")
 
     filename = secure_filename(file.filename) or "results.xlsx"
-    with db() as conn:
-        cur = dict_cursor(conn)
-        cur.execute("""
-            INSERT INTO result_uploads (exam_type, original_filename, rows_imported, uploaded_by)
-            VALUES (%s,%s,%s,%s)
-            RETURNING id
-        """, (exam_type, filename, len(parsed_rows), session.get("user_id")))
-        upload = cur.fetchone()
-        cur.execute("DELETE FROM national_exam_results WHERE exam_type=%s", (exam_type,))
-        for row in parsed_rows:
-            cur.execute("""
-                INSERT INTO national_exam_results
-                    (exam_type, candidate_number, full_name, birth_place, birth_date,
-                     wilaya, moughataa, center_name, score, decision, rank, raw_data, upload_id)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s)
-            """, (
-                exam_type,
-                row.get("candidate_number"),
-                row.get("full_name"),
-                row.get("birth_place"),
-                row.get("birth_date"),
-                row.get("wilaya"),
-                row.get("moughataa"),
-                row.get("center_name"),
-                row.get("score"),
-                row.get("decision"),
-                row.get("rank"),
-                json.dumps(row.get("raw_data") or {}, ensure_ascii=False),
-                upload["id"],
-            ))
-        conn.commit()
-        cur.close()
+    try:
+        insert_national_results(exam_type, filename, parsed_rows, session.get("user_id"))
+    except Exception as exc:
+        app.logger.exception("National results import failed")
+        flash(f"تعذر حفظ النتائج في قاعدة البيانات: {exc}", "danger")
+        return redirect(url_for("admin_dashboard") + "#national-results")
     flash(f"تم استيراد {len(parsed_rows)} نتيجة في {RESULT_EXAM_LABELS[exam_type]}. ستظهر مباشرة داخل التطبيق.", "success")
     return redirect(url_for("admin_dashboard") + "#national-results")
 
@@ -2115,6 +2089,14 @@ def excel_cell_text(value):
         return text[:-2]
     return text
 
+def db_text(value, max_length=None):
+    text = excel_cell_text(value)
+    if not text:
+        return None
+    if max_length and len(text) > max_length:
+        return text[:max_length]
+    return text
+
 def parse_results_workbook(file_storage):
     try:
         from openpyxl import load_workbook
@@ -2171,6 +2153,42 @@ def parse_results_workbook(file_storage):
         results.append(parsed)
     workbook.close()
     return results
+
+def insert_national_results(exam_type, filename, parsed_rows, uploaded_by):
+    filename = db_text(filename, 255) or "results.xlsx"
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""
+            INSERT INTO result_uploads (exam_type, original_filename, rows_imported, uploaded_by)
+            VALUES (%s,%s,%s,%s)
+            RETURNING id, uploaded_at
+        """, (exam_type, filename, len(parsed_rows), uploaded_by))
+        upload = cur.fetchone()
+        cur.execute("DELETE FROM national_exam_results WHERE exam_type=%s", (exam_type,))
+        for row in parsed_rows:
+            cur.execute("""
+                INSERT INTO national_exam_results
+                    (exam_type, candidate_number, full_name, birth_place, birth_date,
+                     wilaya, moughataa, center_name, score, decision, rank, raw_data, upload_id)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s)
+            """, (
+                exam_type,
+                db_text(row.get("candidate_number"), 80),
+                db_text(row.get("full_name"), 255),
+                db_text(row.get("birth_place"), 160),
+                db_text(row.get("birth_date"), 80),
+                db_text(row.get("wilaya"), 160),
+                db_text(row.get("moughataa"), 160),
+                db_text(row.get("center_name"), 255),
+                db_text(row.get("score"), 80),
+                db_text(row.get("decision"), 160),
+                db_text(row.get("rank"), 80),
+                json.dumps(row.get("raw_data") or {}, ensure_ascii=False),
+                upload["id"],
+            ))
+        conn.commit()
+        cur.close()
+    return upload
 
 def api_result_payload(row):
     return {
@@ -2640,38 +2658,11 @@ def api_upload_results(exam_type):
         return api_error("لم يتم العثور على نتائج قابلة للاستيراد.", 400, "empty_results")
 
     filename = secure_filename(file.filename) or "results.xlsx"
-    with db() as conn:
-        cur = dict_cursor(conn)
-        cur.execute("""
-            INSERT INTO result_uploads (exam_type, original_filename, rows_imported, uploaded_by)
-            VALUES (%s,%s,%s,%s)
-            RETURNING id, uploaded_at
-        """, (exam_type, filename, len(parsed_rows), request.api_user["id"]))
-        upload = cur.fetchone()
-        cur.execute("DELETE FROM national_exam_results WHERE exam_type=%s", (exam_type,))
-        for row in parsed_rows:
-            cur.execute("""
-                INSERT INTO national_exam_results
-                    (exam_type, candidate_number, full_name, birth_place, birth_date,
-                     wilaya, moughataa, center_name, score, decision, rank, raw_data, upload_id)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s)
-            """, (
-                exam_type,
-                row.get("candidate_number"),
-                row.get("full_name"),
-                row.get("birth_place"),
-                row.get("birth_date"),
-                row.get("wilaya"),
-                row.get("moughataa"),
-                row.get("center_name"),
-                row.get("score"),
-                row.get("decision"),
-                row.get("rank"),
-                json.dumps(row.get("raw_data") or {}, ensure_ascii=False),
-                upload["id"],
-            ))
-        conn.commit()
-        cur.close()
+    try:
+        upload = insert_national_results(exam_type, filename, parsed_rows, request.api_user["id"])
+    except Exception as exc:
+        app.logger.exception("National results API import failed")
+        return api_error(f"تعذر حفظ النتائج في قاعدة البيانات: {exc}", 500, "import_failed")
     return jsonify({
         "uploaded": True,
         "rowsImported": len(parsed_rows),
