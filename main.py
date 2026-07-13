@@ -1173,24 +1173,26 @@ def admin_dashboard():
     if result_exam not in RESULT_EXAM_TYPES:
         result_exam = "bac-first"
     result_matches = []
-    if len(result_query) >= 2:
+    if result_query.isdigit() or len(result_query) >= 2:
         with db() as conn:
             cur = dict_cursor(conn)
             if result_query.isdigit():
+                normalized_number = normalize_candidate_number(result_query)
                 cur.execute("""
                     SELECT *
                     FROM national_exam_results
-                    WHERE exam_type=%s AND candidate_number ILIKE %s
-                    ORDER BY CASE WHEN candidate_number=%s THEN 0 ELSE 1 END, full_name ASC
-                    LIMIT 50
-                """, (result_exam, f"%{result_query}%", result_query))
+                    WHERE exam_type=%s
+                      AND COALESCE(NULLIF(regexp_replace(candidate_number, '\\D', '', 'g'), ''), '0')::bigint = %s::bigint
+                    ORDER BY id ASC
+                    LIMIT 1
+                """, (result_exam, normalized_number))
             else:
                 cur.execute("""
                     SELECT *
                     FROM national_exam_results
                     WHERE exam_type=%s AND full_name ILIKE %s
                     ORDER BY full_name ASC
-                    LIMIT 50
+                    LIMIT 1
                 """, (result_exam, f"%{result_query}%"))
             result_matches = cur.fetchall()
             cur.close()
@@ -2154,6 +2156,11 @@ def result_score_text(value):
         return str(value).replace(".", ",")
     return excel_cell_text(value)
 
+def normalize_candidate_number(value):
+    digits = re.sub(r"\D+", "", str(value or ""))
+    normalized = digits.lstrip("0")
+    return normalized or ("0" if digits else "")
+
 def db_text(value, max_length=None):
     text = excel_cell_text(value)
     if not text:
@@ -2689,28 +2696,28 @@ def api_search_results(exam_type):
     if exam_type not in RESULT_EXAM_TYPES:
         return api_error("Unknown exam type.", 404, "unknown_exam_type")
     query = (request.args.get("q") or "").strip()
-    if len(query) < 2:
+    if not query.isdigit() and len(query) < 2:
         return jsonify({"results": []})
 
     with db() as conn:
         cur = dict_cursor(conn)
         if query.isdigit():
+            normalized_number = normalize_candidate_number(query)
             cur.execute("""
                 SELECT *
                 FROM national_exam_results
-                WHERE exam_type=%s AND candidate_number ILIKE %s
-                ORDER BY
-                    CASE WHEN candidate_number=%s THEN 0 ELSE 1 END,
-                    full_name ASC
-                LIMIT 25
-            """, (exam_type, f"%{query}%", query))
+                WHERE exam_type=%s
+                  AND COALESCE(NULLIF(regexp_replace(candidate_number, '\\D', '', 'g'), ''), '0')::bigint = %s::bigint
+                ORDER BY id ASC
+                LIMIT 1
+            """, (exam_type, normalized_number))
         else:
             cur.execute("""
                 SELECT *
                 FROM national_exam_results
                 WHERE exam_type=%s AND full_name ILIKE %s
                 ORDER BY full_name ASC
-                LIMIT 25
+                LIMIT 1
             """, (exam_type, f"%{query}%"))
         rows = cur.fetchall()
         cur.close()

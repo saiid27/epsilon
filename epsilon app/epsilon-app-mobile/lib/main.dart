@@ -3484,7 +3484,8 @@ class _NationalResultSearchPageState extends State<NationalResultSearchPage> {
 
   Future<void> search() async {
     final query = queryController.text.trim();
-    if (query.length < 2) {
+    final isNumberQuery = RegExp(r'^\d+$').hasMatch(query);
+    if (!isNumberQuery && query.length < 2) {
       setState(() {
         message = 'اكتب رقم المترشح أو جزءا من الاسم الكامل.';
         results = [];
