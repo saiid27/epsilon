@@ -6,6 +6,7 @@ from functools import wraps
 from urllib.parse import parse_qs, urlparse
 from flask import Flask, Response, render_template, request, redirect, url_for, flash, session, jsonify
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 import psycopg2
 from psycopg2 import IntegrityError
@@ -24,6 +25,24 @@ app = Flask(__name__, template_folder=os.path.join(BASE, "templates"),
              static_folder=os.path.join(BASE, "static"))
 app.secret_key = os.getenv("SECRET_KEY", "change-this-secret")
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100 MB
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_upload_too_large(error):
+    if request.path.startswith("/admin/results/upload"):
+        flash("ملف Excel كبير جداً. يرجى تصديره كملف .xlsx فقط وتقليل حجمه إن أمكن.", "danger")
+        return redirect(url_for("admin_dashboard") + "#national-results")
+    return error
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    if request.path.startswith("/admin/results/upload"):
+        app.logger.exception("Unhandled results upload error")
+        flash(f"تعذر معالجة ملف Excel: {error}", "danger")
+        return redirect(url_for("admin_dashboard") + "#national-results")
+    if isinstance(error, HTTPException):
+        return error
+    app.logger.exception("Unhandled application error")
+    return "Internal Server Error", 500
 
 @app.after_request
 def add_api_cors_headers(response):
