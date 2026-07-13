@@ -1,7 +1,7 @@
 name: epsilon
 description: A Flutter mobile application.
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.2+5
 
 environment:
   sdk: ^3.11.0
@@ -15,6 +15,7 @@ dependencies:
   cloud_firestore: ^6.3.0
   cloud_functions: ^6.2.0
   firebase_storage: ^13.0.0
+  file_picker: ^10.3.7
   image_picker: ^1.2.1
   shared_preferences: ^2.5.3
   url_launcher: ^6.3.2

@@ -237,6 +237,40 @@ class ApiRepository {
     await delete('/api/notifications/$id');
   }
 
+  Future<List<Map<String, dynamic>>> searchNationalResults({
+    required String examType,
+    required String query,
+  }) async {
+    final data = await get(
+      '/api/results/$examType?q=${Uri.encodeQueryComponent(query)}',
+    );
+    return (data['results'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  Future<int> uploadNationalResults({
+    required String examType,
+    required String filePath,
+    required String fileName,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      _uri('/api/results/$examType/upload'),
+    );
+    if (_token != null) {
+      request.headers[HttpHeaders.authorizationHeader] = 'Bearer $_token';
+    }
+    request.files.add(
+      await http.MultipartFile.fromPath('file', filePath, filename: fileName),
+    );
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    final data = _decode(response);
+    return (data['rowsImported'] as num?)?.toInt() ?? 0;
+  }
+
   Uri _uri(String path) {
     final root = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)

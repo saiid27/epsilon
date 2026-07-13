@@ -327,6 +327,97 @@
     <div class="alert alert-info">لا توجد ملفات PDF مجانية بعد.</div>
   {% endfor %}
 
+  <hr class="my-4" id="national-results">
+  <h5 class="mb-3">نتائج المسابقات الوطنية</h5>
+  <div class="row g-3">
+    <div class="col-12 col-lg-5">
+      <div class="card p-3 shadow-sm">
+        <h6 class="mb-3">رفع ملف Excel</h6>
+        {% if is_developer %}
+        <form method="POST" action="{{ url_for('admin_upload_results') }}" enctype="multipart/form-data" class="row g-2">
+          <div class="col-12">
+            <select name="exam_type" class="form-select" required>
+              {% for code,label in result_exam_labels.items() %}
+                <option value="{{ code }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <input type="file" name="file" class="form-control" accept=".xlsx,.xlsm" required>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-primary w-100">رفع وتحديث النتائج</button>
+          </div>
+        </form>
+        <div class="form-text mt-2">رفع ملف جديد لنفس المسابقة يستبدل النتائج السابقة، وتظهر مباشرة في التطبيق.</div>
+        {% else %}
+        <div class="alert alert-info mb-0">رفع ملفات النتائج متاح لحساب المطور فقط.</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-12 col-lg-7">
+      <div class="card p-3 shadow-sm h-100">
+        <h6 class="mb-3">ملخص البيانات</h6>
+        <div class="row g-2">
+          {% for code,label in result_exam_labels.items() %}
+          {% set summary = result_summary.get(code) %}
+          <div class="col-12 col-md-4">
+            <div class="border rounded p-3 bg-white text-center h-100">
+              <div class="fw-bold">{{ label }}</div>
+              <div class="fs-4 text-primary fw-black">{{ summary.total if summary else 0 }}</div>
+              <div class="small text-muted">نتيجة محفوظة</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-3 shadow-sm mt-3">
+    <h6 class="mb-3">بحث في النتائج كما يظهر في التطبيق</h6>
+    <form method="GET" action="{{ url_for('admin_dashboard') }}" class="row g-2">
+      <div class="col-12 col-md-3">
+        <select name="result_exam" class="form-select">
+          {% for code,label in result_exam_labels.items() %}
+            <option value="{{ code }}" {% if result_exam == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-7">
+        <input name="result_q" class="form-control" value="{{ result_query }}" placeholder="رقم المترشح أو الاسم الكامل">
+      </div>
+      <div class="col-12 col-md-2">
+        <button class="btn btn-dark w-100">بحث</button>
+      </div>
+    </form>
+    {% if result_query %}
+    <div class="table-responsive mt-3">
+      <table class="table table-bordered align-middle text-center bg-white">
+        <thead class="table-dark">
+          <tr>
+            <th>رقم المترشح</th><th>الاسم الكامل</th><th>المركز</th><th>المعدل</th><th>القرار</th><th>الرتبة</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in result_matches %}
+          <tr>
+            <td>{{ r.candidate_number or '-' }}</td>
+            <td>{{ r.full_name }}</td>
+            <td>{{ r.center_name or '-' }}</td>
+            <td>{{ r.score or '-' }}</td>
+            <td>{{ r.decision or '-' }}</td>
+            <td>{{ r.rank or '-' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6">لا توجد نتيجة مطابقة.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
   <hr class="my-4">
   <h5 class="mb-3">إدارة الحسابات</h5>
   {% if is_developer %}

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, random, time, sys, socket, hashlib, re
+import os, random, time, sys, socket, hashlib, re, json, unicodedata
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 from functools import wraps
@@ -44,6 +44,7 @@ for p in (PAY_DIR, VID_DIR, PDF_DIR):
 IMG_EXT   = {"jpg","jpeg","png","webp","pdf"}  # payment proof allows pdf too
 VIDEO_EXT = {"mp4","webm","mkv","avi","mov","ogg"}
 PDF_EXT   = {"pdf"}
+EXCEL_EXT = {"xlsx","xlsm"}
 def allowed(fn, exts): return "." in fn and fn.rsplit(".",1)[1].lower() in exts
 
 # ===== PostgreSQL =====
@@ -705,6 +706,36 @@ def ensure_courses_table():
             )
         """)
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS result_uploads (
+                id SERIAL PRIMARY KEY,
+                exam_type VARCHAR(40) NOT NULL,
+                original_filename VARCHAR(255) NOT NULL,
+                rows_imported INT NOT NULL DEFAULT 0,
+                uploaded_by INT REFERENCES users(id) ON DELETE SET NULL,
+                uploaded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS national_exam_results (
+                id SERIAL PRIMARY KEY,
+                exam_type VARCHAR(40) NOT NULL,
+                candidate_number VARCHAR(80),
+                full_name VARCHAR(255) NOT NULL,
+                birth_place VARCHAR(160),
+                birth_date VARCHAR(80),
+                wilaya VARCHAR(160),
+                moughataa VARCHAR(160),
+                center_name VARCHAR(255),
+                score VARCHAR(80),
+                decision VARCHAR(160),
+                rank VARCHAR(80),
+                raw_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+                upload_id INT REFERENCES result_uploads(id) ON DELETE SET NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("ALTER TABLE national_exam_results ADD COLUMN IF NOT EXISTS rank VARCHAR(80)")
+        cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_lessons_level_subject
             ON lessons (level, subject, uploaded_at DESC)
         """)
@@ -731,6 +762,14 @@ def ensure_courses_table():
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_finance_categories_active_type
             ON finance_categories (active, category_type, name)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_national_results_exam_number
+            ON national_exam_results (exam_type, candidate_number)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_national_results_exam_name
+            ON national_exam_results (exam_type, lower(full_name))
         """)
         if not table_exists:
             for index, course in enumerate(COURSES, start=1):
@@ -1086,9 +1125,50 @@ def admin_dashboard():
     courses = fetch_courses(active_only=False)
     course_subjects = fetch_course_subjects()
     free_pdfs = fetch_free_pdfs(active_only=False)
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""
+            SELECT exam_type, COUNT(*) AS total, MAX(created_at) AS last_import
+            FROM national_exam_results
+            GROUP BY exam_type
+        """)
+        result_summary_rows = cur.fetchall()
+        cur.close()
+    result_summary = {row["exam_type"]: row for row in result_summary_rows}
+    result_query = (request.args.get("result_q") or "").strip()
+    result_exam = request.args.get("result_exam", "bac-first").strip()
+    if result_exam not in RESULT_EXAM_TYPES:
+        result_exam = "bac-first"
+    result_matches = []
+    if len(result_query) >= 2:
+        with db() as conn:
+            cur = dict_cursor(conn)
+            if result_query.isdigit():
+                cur.execute("""
+                    SELECT *
+                    FROM national_exam_results
+                    WHERE exam_type=%s AND candidate_number ILIKE %s
+                    ORDER BY CASE WHEN candidate_number=%s THEN 0 ELSE 1 END, full_name ASC
+                    LIMIT 50
+                """, (result_exam, f"%{result_query}%", result_query))
+            else:
+                cur.execute("""
+                    SELECT *
+                    FROM national_exam_results
+                    WHERE exam_type=%s AND full_name ILIKE %s
+                    ORDER BY full_name ASC
+                    LIMIT 50
+                """, (result_exam, f"%{result_query}%"))
+            result_matches = cur.fetchall()
+            cur.close()
     return render_template("admin.html", users=users, courses=courses,
                            course_subjects=course_subjects, free_pdfs=free_pdfs,
                            lessons=lessons,
+                           result_exam_labels=RESULT_EXAM_LABELS,
+                           result_summary=result_summary,
+                           result_query=result_query,
+                           result_exam=result_exam,
+                           result_matches=result_matches,
                            is_developer=is_developer())
 
 @app.route("/admin/activate/<int:uid>")
@@ -1117,6 +1197,65 @@ def delete_user(uid):
     else:
         flash("Compte supprimÃ©.", "warning")
     return redirect(url_for("admin_dashboard"))
+
+@app.post("/admin/results/upload")
+@developer_required
+def admin_upload_results():
+    exam_type = request.form.get("exam_type", "").strip()
+    if exam_type not in RESULT_EXAM_TYPES:
+        flash("نوع المسابقة غير صحيح.", "danger")
+        return redirect(url_for("admin_dashboard") + "#national-results")
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("يرجى اختيار ملف Excel.", "danger")
+        return redirect(url_for("admin_dashboard") + "#national-results")
+    if not allowed(file.filename, EXCEL_EXT):
+        flash("الملفات المدعومة هي xlsx و xlsm فقط.", "danger")
+        return redirect(url_for("admin_dashboard") + "#national-results")
+    try:
+        parsed_rows = parse_results_workbook(file)
+    except Exception as exc:
+        flash(f"تعذر قراءة ملف Excel: {exc}", "danger")
+        return redirect(url_for("admin_dashboard") + "#national-results")
+    if not parsed_rows:
+        flash("لم يتم العثور على نتائج داخل الملف.", "warning")
+        return redirect(url_for("admin_dashboard") + "#national-results")
+
+    filename = secure_filename(file.filename) or "results.xlsx"
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""
+            INSERT INTO result_uploads (exam_type, original_filename, rows_imported, uploaded_by)
+            VALUES (%s,%s,%s,%s)
+            RETURNING id
+        """, (exam_type, filename, len(parsed_rows), session.get("user_id")))
+        upload = cur.fetchone()
+        cur.execute("DELETE FROM national_exam_results WHERE exam_type=%s", (exam_type,))
+        for row in parsed_rows:
+            cur.execute("""
+                INSERT INTO national_exam_results
+                    (exam_type, candidate_number, full_name, birth_place, birth_date,
+                     wilaya, moughataa, center_name, score, decision, rank, raw_data, upload_id)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s)
+            """, (
+                exam_type,
+                row.get("candidate_number"),
+                row.get("full_name"),
+                row.get("birth_place"),
+                row.get("birth_date"),
+                row.get("wilaya"),
+                row.get("moughataa"),
+                row.get("center_name"),
+                row.get("score"),
+                row.get("decision"),
+                row.get("rank"),
+                json.dumps(row.get("raw_data") or {}, ensure_ascii=False),
+                upload["id"],
+            ))
+        conn.commit()
+        cur.close()
+    flash(f"تم استيراد {len(parsed_rows)} نتيجة في {RESULT_EXAM_LABELS[exam_type]}. ستظهر مباشرة داخل التطبيق.", "success")
+    return redirect(url_for("admin_dashboard") + "#national-results")
 
 # ===== Tableau de bord Finance =====
 @app.route("/finance")
@@ -1927,6 +2066,127 @@ def api_lesson_payload(lesson):
         "createdAt": lesson["uploaded_at"].isoformat() if lesson.get("uploaded_at") else None,
     }
 
+RESULT_EXAM_TYPES = {"concours", "brevet", "bac-first"}
+RESULT_EXAM_LABELS = {
+    "concours": "كونكور",
+    "brevet": "ابريفة",
+    "bac-first": "الباكالوريا الدورة الأولى",
+}
+RESULT_FIELD_ALIASES = {
+    "candidate_number": [
+        "رقم الجلوس", "رقم", "numero", "num", "matricule", "nni", "candidate number",
+    ],
+    "full_name": ["الاسم", "الإسم", "اسم", "nom", "name", "full name", "candidat"],
+    "birth_place": ["محل الميلاد", "مكان الميلاد", "lieu naissance", "place of birth"],
+    "birth_date": ["تاريخ الميلاد", "date naissance", "date de naissance", "birth date"],
+    "wilaya": ["الولاية", "wilaya"],
+    "moughataa": ["المقاطعة", "moughataa", "departement", "département"],
+    "center_name": ["centre examen", "centre examen fr", "center", "centre", "مركز", "مركز الامتحان"],
+    "score": ["moy bac", "moy", "moyenne", "المعدل", "النتيجة", "score"],
+    "decision": ["قرار", "القرار", "decision", "décision", "resultat", "résultat"],
+    "rank": ["الرتبة", "الترتيب", "rang", "rank", "classement"],
+}
+
+def normalize_excel_text(value):
+    text = "" if value is None else str(value).strip()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = text.lower()
+    text = re.sub(r"[_\-/]+", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+def canonical_result_field(header):
+    normalized = normalize_excel_text(header)
+    for field, aliases in RESULT_FIELD_ALIASES.items():
+        for alias in aliases:
+            alias_norm = normalize_excel_text(alias)
+            if normalized == alias_norm or alias_norm in normalized:
+                return field
+    return None
+
+def excel_cell_text(value):
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.strftime("%d/%m/%Y")
+    text = str(value).strip()
+    if text.endswith(".0") and text[:-2].isdigit():
+        return text[:-2]
+    return text
+
+def parse_results_workbook(file_storage):
+    try:
+        from openpyxl import load_workbook
+    except ImportError as exc:
+        raise RuntimeError("openpyxl is not installed.") from exc
+
+    workbook = load_workbook(file_storage, read_only=True, data_only=True)
+    sheet = workbook.active
+    header_row_number = None
+    field_by_index = {}
+    header_by_index = {}
+
+    for row_number, row in enumerate(
+        sheet.iter_rows(min_row=1, max_row=min(sheet.max_row, 25), values_only=True),
+        start=1,
+    ):
+        mapped = {}
+        labels = {}
+        for index, value in enumerate(row):
+            label = excel_cell_text(value)
+            field = canonical_result_field(label)
+            if field and field not in mapped.values():
+                mapped[index] = field
+                labels[index] = label
+        if len(mapped) >= 2 and "full_name" in mapped.values():
+            header_row_number = row_number
+            field_by_index = mapped
+            header_by_index = labels
+            break
+
+    if not header_row_number:
+        raise ValueError("لم يتم العثور على صف عناوين واضح داخل ملف Excel.")
+
+    results = []
+    start_row = header_row_number + 1
+
+    for row in sheet.iter_rows(min_row=start_row, values_only=True):
+        parsed = {}
+        raw = {}
+        for index, value in enumerate(row):
+            text = excel_cell_text(value)
+            if index in header_by_index:
+                raw[header_by_index[index]] = text
+            field = field_by_index.get(index)
+            if field and text:
+                parsed[field] = text
+        if not parsed.get("full_name") and not parsed.get("candidate_number"):
+            continue
+        if not parsed.get("full_name"):
+            continue
+        parsed["raw_data"] = raw
+        results.append(parsed)
+    workbook.close()
+    return results
+
+def api_result_payload(row):
+    return {
+        "id": str(row["id"]),
+        "examType": row["exam_type"],
+        "candidateNumber": row.get("candidate_number") or "",
+        "fullName": row.get("full_name") or "",
+        "birthPlace": row.get("birth_place") or "",
+        "birthDate": row.get("birth_date") or "",
+        "wilaya": row.get("wilaya") or "",
+        "moughataa": row.get("moughataa") or "",
+        "centerName": row.get("center_name") or "",
+        "score": row.get("score") or "",
+        "decision": row.get("decision") or "",
+        "rank": row.get("rank") or "",
+        "rawData": row.get("raw_data") or {},
+    }
+
 def api_current_user():
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
@@ -2326,6 +2586,96 @@ def api_archive_files():
                     "createdAt": pdf["created_at"].isoformat() if pdf.get("created_at") else None,
                 })
     return jsonify({"items": items})
+
+@app.get("/api/results/<exam_type>")
+def api_search_results(exam_type):
+    if exam_type not in RESULT_EXAM_TYPES:
+        return api_error("Unknown exam type.", 404, "unknown_exam_type")
+    query = (request.args.get("q") or "").strip()
+    if len(query) < 2:
+        return jsonify({"results": []})
+
+    with db() as conn:
+        cur = dict_cursor(conn)
+        if query.isdigit():
+            cur.execute("""
+                SELECT *
+                FROM national_exam_results
+                WHERE exam_type=%s AND candidate_number ILIKE %s
+                ORDER BY
+                    CASE WHEN candidate_number=%s THEN 0 ELSE 1 END,
+                    full_name ASC
+                LIMIT 25
+            """, (exam_type, f"%{query}%", query))
+        else:
+            cur.execute("""
+                SELECT *
+                FROM national_exam_results
+                WHERE exam_type=%s AND full_name ILIKE %s
+                ORDER BY full_name ASC
+                LIMIT 25
+            """, (exam_type, f"%{query}%"))
+        rows = cur.fetchall()
+        cur.close()
+    return jsonify({"results": [api_result_payload(row) for row in rows]})
+
+@app.post("/api/results/<exam_type>/upload")
+@api_login_required(ADMIN_ROLES)
+def api_upload_results(exam_type):
+    if exam_type not in RESULT_EXAM_TYPES:
+        return api_error("Unknown exam type.", 404, "unknown_exam_type")
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return api_error("Excel file is required.", 400, "missing_file")
+    if not allowed(file.filename, EXCEL_EXT):
+        return api_error("Only .xlsx or .xlsm files are supported.", 400, "invalid_file")
+
+    try:
+        parsed_rows = parse_results_workbook(file)
+    except Exception as exc:
+        return api_error(f"تعذر قراءة ملف Excel: {exc}", 400, "parse_failed")
+    if not parsed_rows:
+        return api_error("لم يتم العثور على نتائج قابلة للاستيراد.", 400, "empty_results")
+
+    filename = secure_filename(file.filename) or "results.xlsx"
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""
+            INSERT INTO result_uploads (exam_type, original_filename, rows_imported, uploaded_by)
+            VALUES (%s,%s,%s,%s)
+            RETURNING id, uploaded_at
+        """, (exam_type, filename, len(parsed_rows), request.api_user["id"]))
+        upload = cur.fetchone()
+        cur.execute("DELETE FROM national_exam_results WHERE exam_type=%s", (exam_type,))
+        for row in parsed_rows:
+            cur.execute("""
+                INSERT INTO national_exam_results
+                    (exam_type, candidate_number, full_name, birth_place, birth_date,
+                     wilaya, moughataa, center_name, score, decision, rank, raw_data, upload_id)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s)
+            """, (
+                exam_type,
+                row.get("candidate_number"),
+                row.get("full_name"),
+                row.get("birth_place"),
+                row.get("birth_date"),
+                row.get("wilaya"),
+                row.get("moughataa"),
+                row.get("center_name"),
+                row.get("score"),
+                row.get("decision"),
+                row.get("rank"),
+                json.dumps(row.get("raw_data") or {}, ensure_ascii=False),
+                upload["id"],
+            ))
+        conn.commit()
+        cur.close()
+    return jsonify({
+        "uploaded": True,
+        "rowsImported": len(parsed_rows),
+        "uploadId": str(upload["id"]),
+        "uploadedAt": upload["uploaded_at"].isoformat() if upload.get("uploaded_at") else None,
+    }), 201
 
 @app.get("/api/notifications")
 @api_login_required()

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -304,6 +305,38 @@ class AppNotification {
   final String title;
   final String body;
   final DateTime createdAt;
+}
+
+class NationalExamResult {
+  const NationalExamResult({
+    required this.id,
+    required this.examType,
+    required this.candidateNumber,
+    required this.fullName,
+    required this.birthPlace,
+    required this.birthDate,
+    required this.wilaya,
+    required this.moughataa,
+    required this.centerName,
+    required this.score,
+    required this.decision,
+    required this.rank,
+    required this.rawData,
+  });
+
+  final String id;
+  final String examType;
+  final String candidateNumber;
+  final String fullName;
+  final String birthPlace;
+  final String birthDate;
+  final String wilaya;
+  final String moughataa;
+  final String centerName;
+  final String score;
+  final String decision;
+  final String rank;
+  final Map<String, dynamic> rawData;
 }
 
 class SchoolStore extends ChangeNotifier {
@@ -1073,6 +1106,25 @@ class SchoolStore extends ChangeNotifier {
       title: (data['title'] as String?) ?? 'إشعار',
       body: (data['body'] as String?) ?? '',
       createdAt: _dateFromApi(data['createdAt']),
+    );
+  }
+
+  NationalExamResult _nationalResultFromApi(Map<String, dynamic> data) {
+    final rawData = data['rawData'];
+    return NationalExamResult(
+      id: '${data['id'] ?? ''}',
+      examType: (data['examType'] as String?) ?? '',
+      candidateNumber: (data['candidateNumber'] as String?) ?? '',
+      fullName: (data['fullName'] as String?) ?? '',
+      birthPlace: (data['birthPlace'] as String?) ?? '',
+      birthDate: (data['birthDate'] as String?) ?? '',
+      wilaya: (data['wilaya'] as String?) ?? '',
+      moughataa: (data['moughataa'] as String?) ?? '',
+      centerName: (data['centerName'] as String?) ?? '',
+      score: (data['score'] as String?) ?? '',
+      decision: (data['decision'] as String?) ?? '',
+      rank: (data['rank'] as String?) ?? '',
+      rawData: rawData is Map ? Map<String, dynamic>.from(rawData) : const {},
     );
   }
 
@@ -1891,6 +1943,35 @@ class SchoolStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<List<NationalExamResult>> searchNationalResults({
+    required String examType,
+    required String query,
+  }) async {
+    if (!firebaseEnabled) {
+      return const [];
+    }
+    final items = await (_repository as ApiRepository).searchNationalResults(
+      examType: examType,
+      query: query,
+    );
+    return items.map(_nationalResultFromApi).toList();
+  }
+
+  Future<int> uploadNationalResults({
+    required String examType,
+    required String filePath,
+    required String fileName,
+  }) async {
+    if (!firebaseEnabled) {
+      return 0;
+    }
+    return (_repository as ApiRepository).uploadNationalResults(
+      examType: examType,
+      filePath: filePath,
+      fileName: fileName,
+    );
+  }
+
   void setThemeMode(ThemeMode value) {
     themeMode = value;
     notifyListeners();
@@ -2347,137 +2428,128 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const loginBlue = Color(0xFF2F5BEA);
+    const loginAccent = Color(0xFF2F5EEA);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF4F7FF),
       body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned(
-              left: 4,
-              top: 2,
-              child: IconButton(
-                color: const Color(0xFF111827),
-                onPressed: () {
-                  if (registerMode) {
-                    setState(() => registerMode = false);
-                  }
-                },
-                icon: const Icon(Icons.arrow_back_rounded),
-              ),
-            ),
-            Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 8),
-                      Center(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 18),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 32),
+                  AspectRatio(
+                    aspectRatio: 1024 / 610,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Image.asset(
+                            'assets/onboarding/login_hero.png',
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                          ),
+                        ),
+                        Positioned(
+                          left: 18,
+                          top: 16,
                           child: SizedBox(
-                            width: 260,
-                            height: 160,
-                            child: Image.asset(
-                              'assets/onboarding/welcome.jpeg',
-                              fit: BoxFit.cover,
-                              alignment: const Alignment(0, -0.45),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        registerMode ? 'إنشاء حساب جديد' : 'مرحبا بك مجددا',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: const Color(0xFF111827),
-                          fontWeight: FontWeight.w800,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        registerMode
-                            ? 'أدخل بياناتك وانتظر موافقة الإدارة'
-                            : 'سجل دخولك للمتابعة',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF6B7280),
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
-                      if (!widget.firebaseStatus.isReady) ...[
-                        FirebaseSetupBanner(
-                          message:
-                              widget.firebaseStatus.errorMessage ??
-                              'Firebase غير متصل حاليًا.',
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      registerMode
-                          ? const RegisterCard()
-                          : const LoginCard(primaryColor: loginBlue),
-                      const SizedBox(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            registerMode
-                                ? 'لديك حساب بالفعل؟'
-                                : 'ليس لديك حساب؟',
-                            style: const TextStyle(
-                              color: Color(0xFF6B7280),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              setState(() => registerMode = !registerMode);
-                            },
-                            child: Text(
-                              registerMode ? 'تسجيل الدخول' : 'إنشاء حساب',
-                              style: const TextStyle(
-                                color: loginBlue,
-                                fontWeight: FontWeight.w800,
+                            width: 58,
+                            height: 58,
+                            child: Material(
+                              color: Colors.transparent,
+                              shape: const CircleBorder(),
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: () {
+                                  if (registerMode) {
+                                    setState(() => registerMode = false);
+                                  }
+                                },
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                      if (!registerMode)
-                        TextButton(
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const GuestPage(),
-                            ),
-                          ),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 24),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            'يمكنك أيضا الدخول كزائر',
-                            style: TextStyle(
-                              color: loginBlue,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
                         ),
-                      const AuthFooterLinks(),
-                      const SizedBox(height: 8),
-                      const DeveloperCredit(),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(40, 28, 40, 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (!widget.firebaseStatus.isReady) ...[
+                          FirebaseSetupBanner(
+                            message:
+                                widget.firebaseStatus.errorMessage ??
+                                'Firebase غير متصل حاليًا.',
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        registerMode
+                            ? const RegisterCard()
+                            : const LoginCard(primaryColor: loginAccent),
+                        const SizedBox(height: 18),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              registerMode
+                                  ? 'لديك حساب بالفعل؟'
+                                  : 'ليس لديك حساب؟',
+                              style: const TextStyle(
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setState(() => registerMode = !registerMode);
+                              },
+                              child: Text(
+                                registerMode ? 'تسجيل الدخول' : 'إنشاء حساب',
+                                style: const TextStyle(
+                                  color: loginAccent,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (!registerMode)
+                          FilledButton.icon(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const NationalResultsPage(),
+                              ),
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F9F6E),
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(56),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
+                            icon: const Icon(Icons.emoji_events_rounded),
+                            label: const Text(
+                              'نتائج المسابقات الوطنية',
+                              style: TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        const AuthFooterLinks(),
+                        const SizedBox(height: 24),
+                        const DeveloperCredit(),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -2508,106 +2580,148 @@ class _LoginCardState extends State<LoginCard> {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: Colors.white),
-      child: Padding(
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                hintText: 'البريد الإلكتروني أو رقم هاتفك',
-                suffixIcon: Icon(Icons.mail_outline_rounded),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 15,
-                ),
-              ),
+    final fieldBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: Color(0xFFDDE7FB)),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: emailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: InputDecoration(
+            hintText: 'البريد الإلكتروني أو رقم هاتفك',
+            hintStyle: const TextStyle(
+              color: Color(0xFF7A86AA),
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: passwordController,
-              obscureText: obscurePassword,
-              decoration: InputDecoration(
-                hintText: 'كلمة المرور',
-                suffixIcon: const Icon(Icons.lock_outline_rounded),
-                prefixIcon: IconButton(
-                  tooltip: obscurePassword
-                      ? 'إظهار كلمة المرور'
-                      : 'إخفاء كلمة المرور',
-                  onPressed: () =>
-                      setState(() => obscurePassword = !obscurePassword),
-                  icon: Icon(
-                    obscurePassword
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                  ),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 15,
-                ),
-              ),
+            suffixIcon: Icon(
+              Icons.person_outline_rounded,
+              color: widget.primaryColor,
             ),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
-                ),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.only(top: 6),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text(
-                  'نسيت كلمة المرور؟',
-                  style: TextStyle(
-                    color: Color(0xFF4B5563),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
+            filled: true,
+            fillColor: Colors.white,
+            border: fieldBorder,
+            enabledBorder: fieldBorder,
+            focusedBorder: fieldBorder.copyWith(
+              borderSide: BorderSide(color: widget.primaryColor, width: 1.4),
             ),
-            if (error != null) ...[
-              const SizedBox(height: 8),
-              Text(error!, style: TextStyle(color: Colors.red.shade700)),
-            ],
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 52,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: widget.primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onPressed: () async {
-                  final ok = await StoreScope.of(
-                    context,
-                  ).login(emailController.text, passwordController.text);
-                  if (!mounted) {
-                    return;
-                  }
-                  setState(() {
-                    error = ok ? null : 'بيانات الدخول غير صحيحة.';
-                  });
-                },
-                child: const Text(
-                  'تسجيل الدخول',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 19,
             ),
-          ],
+          ),
         ),
-      ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: passwordController,
+          obscureText: obscurePassword,
+          decoration: InputDecoration(
+            hintText: 'كلمة المرور',
+            hintStyle: const TextStyle(
+              color: Color(0xFF7A86AA),
+              fontWeight: FontWeight.w700,
+            ),
+            suffixIcon: Icon(
+              Icons.lock_outline_rounded,
+              color: widget.primaryColor,
+            ),
+            prefixIcon: IconButton(
+              tooltip: obscurePassword
+                  ? 'إظهار كلمة المرور'
+                  : 'إخفاء كلمة المرور',
+              onPressed: () =>
+                  setState(() => obscurePassword = !obscurePassword),
+              icon: Icon(
+                obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: const Color(0xFF475569),
+              ),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            border: fieldBorder,
+            enabledBorder: fieldBorder,
+            focusedBorder: fieldBorder.copyWith(
+              borderSide: BorderSide(color: widget.primaryColor, width: 1.4),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 19,
+            ),
+          ),
+        ),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.only(top: 12),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              'نسيت كلمة المرور؟',
+              style: TextStyle(
+                color: widget.primaryColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+        if (error != null) ...[
+          const SizedBox(height: 8),
+          Text(error!, style: TextStyle(color: Colors.red.shade700)),
+        ],
+        const SizedBox(height: 20),
+        SizedBox(
+          height: 58,
+          child: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: widget.primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              elevation: 8,
+              shadowColor: widget.primaryColor.withValues(alpha: 0.22),
+            ),
+            onPressed: () async {
+              final store = StoreScope.of(context);
+              final ok = await store.login(
+                emailController.text,
+                passwordController.text,
+              );
+              if (!mounted) {
+                return;
+              }
+              setState(() {
+                error = ok
+                    ? null
+                    : store.lastError?.replaceFirst('ApiException: ', '') ??
+                          'بيانات الدخول غير صحيحة.';
+              });
+            },
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.arrow_back_rounded),
+                SizedBox(width: 12),
+                Text(
+                  'تسجيل الدخول',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2617,24 +2731,32 @@ class AuthFooterLinks extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final linkStyle = TextButton.styleFrom(
+      foregroundColor: const Color(0xFF2457D6),
+      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+    );
+
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: 6,
       runSpacing: 0,
       children: [
         TextButton(
+          style: linkStyle,
           onPressed: () => Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const AboutPage())),
           child: const Text('من نحن'),
         ),
         TextButton(
+          style: linkStyle,
           onPressed: () => Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const PrivacyPolicyPage())),
           child: const Text('سياسة الخصوصية'),
         ),
         TextButton(
+          style: linkStyle,
           onPressed: () => Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const ContactUsPage())),
@@ -3049,6 +3171,522 @@ class GuestPage extends StatelessWidget {
             onTap: () => Navigator.of(
               context,
             ).push(MaterialPageRoute(builder: (_) => const ArchivePage())),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class NationalResultsPage extends StatelessWidget {
+  const NationalResultsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: const EpsilonAppBar(
+        title: 'نتائج المسابقات الوطنية',
+        showLogout: false,
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final contentWidth = min(constraints.maxWidth - 32, 420.0);
+          final tileSize = min((contentWidth - 24) / 3, 124.0);
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: max(0, constraints.maxHeight - 42),
+                  maxWidth: 420,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const ResultsTopWidget(),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: const [
+                        Expanded(
+                          child: ResultsImageCard(
+                            title: 'العروض',
+                            image: 'assets/onboarding/content.jpeg',
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: ResultsImageCard(
+                            title: 'تعريف بنا',
+                            image: 'assets/onboarding/welcome.jpeg',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 78),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        NationalResultButton(
+                          title: 'كونكور',
+                          examType: 'concours',
+                          icon: Icons.school_rounded,
+                          size: tileSize,
+                        ),
+                        const SizedBox(width: 12),
+                        NationalResultButton(
+                          title: 'ابريفة',
+                          examType: 'brevet',
+                          icon: Icons.menu_book_rounded,
+                          size: tileSize,
+                        ),
+                        const SizedBox(width: 12),
+                        NationalResultButton(
+                          title: 'الباكالوريا الدورة الأولى',
+                          examType: 'bac-first',
+                          icon: Icons.workspace_premium_rounded,
+                          size: tileSize,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 120),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ContactUsPage(),
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2457D6),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(Icons.support_agent_rounded),
+                      label: const Text(
+                        'طلب التواصل',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'epsilon | dev. med said mohameden',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ResultsTopWidget extends StatelessWidget {
+  const ResultsTopWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2F5BEA),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: const Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          Icon(Icons.fact_check_rounded, color: Colors.white, size: 34),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'صفحة النتائج',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'اختر نوع المسابقة للاطلاع على النتائج',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ResultsImageCard extends StatelessWidget {
+  const ResultsImageCard({required this.title, required this.image, super.key});
+
+  final String title;
+  final String image;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: Image.asset(image, fit: BoxFit.cover),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.56),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class NationalResultButton extends StatelessWidget {
+  const NationalResultButton({
+    required this.title,
+    required this.examType,
+    required this.icon,
+    required this.size,
+    super.key,
+  });
+
+  final String title;
+  final String examType;
+  final IconData icon;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: size,
+      child: Material(
+        color: const Color(0xFF2457D6),
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => NationalResultSearchPage(
+                examType: examType,
+                title: title,
+                icon: icon,
+              ),
+            ),
+          ),
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.white, size: 34),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class NationalResultSearchPage extends StatefulWidget {
+  const NationalResultSearchPage({
+    required this.examType,
+    required this.title,
+    required this.icon,
+    super.key,
+  });
+
+  final String examType;
+  final String title;
+  final IconData icon;
+
+  @override
+  State<NationalResultSearchPage> createState() =>
+      _NationalResultSearchPageState();
+}
+
+class _NationalResultSearchPageState extends State<NationalResultSearchPage> {
+  final queryController = TextEditingController();
+  List<NationalExamResult> results = [];
+  bool isSearching = false;
+  bool isUploading = false;
+  String? message;
+
+  @override
+  void dispose() {
+    queryController.dispose();
+    super.dispose();
+  }
+
+  bool get canUpload {
+    final user = StoreScope.of(context).currentUser;
+    return user?.role == UserRole.admin;
+  }
+
+  Future<void> search() async {
+    final query = queryController.text.trim();
+    if (query.length < 2) {
+      setState(() {
+        message = 'اكتب رقم المترشح أو جزءا من الاسم الكامل.';
+        results = [];
+      });
+      return;
+    }
+    setState(() {
+      isSearching = true;
+      message = null;
+    });
+    try {
+      final found = await StoreScope.of(
+        context,
+      ).searchNationalResults(examType: widget.examType, query: query);
+      setState(() {
+        results = found;
+        message = found.isEmpty ? 'لم يتم العثور على نتيجة مطابقة.' : null;
+      });
+    } catch (error) {
+      setState(() => message = error.toString());
+    } finally {
+      if (mounted) {
+        setState(() => isSearching = false);
+      }
+    }
+  }
+
+  Future<void> uploadExcel() async {
+    final store = StoreScope.of(context);
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['xlsx', 'xlsm'],
+      withData: false,
+    );
+    final file = picked?.files.single;
+    final path = file?.path;
+    if (file == null || path == null) {
+      return;
+    }
+
+    setState(() {
+      isUploading = true;
+      message = null;
+    });
+    try {
+      final count = await store.uploadNationalResults(
+        examType: widget.examType,
+        filePath: path,
+        fileName: file.name,
+      );
+      setState(() {
+        results = [];
+        queryController.clear();
+        message = 'تم استيراد $count نتيجة بنجاح.';
+      });
+    } catch (error) {
+      setState(() => message = error.toString());
+    } finally {
+      if (mounted) {
+        setState(() => isUploading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F9FF),
+      appBar: EpsilonAppBar(title: widget.title, showLogout: false),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [
+          HeaderPanel(
+            title: 'نتائج ${widget.title}',
+            subtitle: 'ابحث برقم المترشح أو الاسم الكامل',
+            icon: widget.icon,
+          ),
+          const SizedBox(height: 16),
+          SectionCard(
+            title: 'البحث عن نتيجة',
+            icon: Icons.search_rounded,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: queryController,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => search(),
+                  decoration: const InputDecoration(
+                    labelText: 'رقم المترشح أو الاسم الكامل',
+                    prefixIcon: Icon(Icons.badge_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: isSearching ? null : search,
+                  icon: isSearching
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.search_rounded),
+                  label: const Text('بحث'),
+                ),
+                if (canUpload) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: isUploading ? null : uploadExcel,
+                    icon: isUploading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.upload_file_rounded),
+                    label: const Text('رفع ملف Excel للنتائج'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (message != null) ...[
+            const SizedBox(height: 14),
+            EmptyState(text: message!),
+          ],
+          if (results.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ...results.map(
+              (result) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: NationalResultCard(result: result),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class NationalResultCard extends StatelessWidget {
+  const NationalResultCard({required this.result, super.key});
+
+  final NationalExamResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      title: result.fullName,
+      icon: Icons.fact_check_rounded,
+      child: Column(
+        children: [
+          ResultInfoRow(label: 'رقم المترشح', value: result.candidateNumber),
+          ResultInfoRow(label: 'الاسم الكامل', value: result.fullName),
+          ResultInfoRow(label: 'المركز', value: result.centerName),
+          ResultInfoRow(label: 'المعدل', value: result.score),
+          ResultInfoRow(label: 'القرار', value: result.decision),
+          ResultInfoRow(label: 'الرتبة', value: result.rank),
+          ResultInfoRow(label: 'الولاية', value: result.wilaya),
+          ResultInfoRow(label: 'المقاطعة', value: result.moughataa),
+          ResultInfoRow(label: 'محل الميلاد', value: result.birthPlace),
+          ResultInfoRow(label: 'تاريخ الميلاد', value: result.birthDate),
+        ],
+      ),
+    );
+  }
+}
+
+class ResultInfoRow extends StatelessWidget {
+  const ResultInfoRow({required this.label, required this.value, super.key});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    if (value.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          Text(
+            '$label:',
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Color(0xFF111827),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ),
         ],
       ),
@@ -4328,6 +4966,21 @@ class AdminDashboard extends StatelessWidget {
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const AdminGuestContentPage(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: width,
+                    child: AdminNavButton(
+                      title: 'نتائج المسابقات',
+                      metric: 'Excel',
+                      subtitle: 'رفع ملفات النتائج والبحث عنها',
+                      icon: Icons.fact_check_rounded,
+                      color: const Color(0xFF2457D6),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const NationalResultsPage(),
                         ),
                       ),
                     ),
