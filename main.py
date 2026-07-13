@@ -2127,8 +2127,10 @@ def parse_results_workbook(file_storage):
     field_by_index = {}
     header_by_index = {}
 
+    sheet_max_row = sheet.max_row if isinstance(sheet.max_row, int) and sheet.max_row > 0 else 50
+    scan_until_row = min(sheet_max_row, 50)
     for row_number, row in enumerate(
-        sheet.iter_rows(min_row=1, max_row=min(sheet.max_row, 25), values_only=True),
+        sheet.iter_rows(min_row=1, max_row=scan_until_row, values_only=True),
         start=1,
     ):
         mapped = {}
