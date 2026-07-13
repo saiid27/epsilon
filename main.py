@@ -1128,11 +1128,24 @@ def admin_dashboard():
     with db() as conn:
         cur = dict_cursor(conn)
         cur.execute("""
-            SELECT exam_type, COUNT(*) AS total, MAX(created_at) AS last_import
-            FROM national_exam_results
-            GROUP BY exam_type
+            SELECT r.exam_type, COUNT(*) AS total, MAX(r.created_at) AS last_import,
+                   MAX(r.upload_id) AS upload_id
+            FROM national_exam_results r
+            GROUP BY r.exam_type
         """)
         result_summary_rows = cur.fetchall()
+        cur.execute("""
+            SELECT ru.id, ru.exam_type, ru.original_filename, ru.rows_imported,
+                   ru.uploaded_at, u.username AS uploaded_by_name,
+                   COALESCE(COUNT(r.id), 0) AS active_rows
+            FROM result_uploads ru
+            LEFT JOIN users u ON u.id = ru.uploaded_by
+            LEFT JOIN national_exam_results r ON r.upload_id = ru.id
+            GROUP BY ru.id, u.username
+            ORDER BY ru.uploaded_at DESC, ru.id DESC
+            LIMIT 12
+        """)
+        result_uploads = cur.fetchall()
         cur.close()
     result_summary = {row["exam_type"]: row for row in result_summary_rows}
     result_query = (request.args.get("result_q") or "").strip()
@@ -1166,6 +1179,7 @@ def admin_dashboard():
                            lessons=lessons,
                            result_exam_labels=RESULT_EXAM_LABELS,
                            result_summary=result_summary,
+                           result_uploads=result_uploads,
                            result_query=result_query,
                            result_exam=result_exam,
                            result_matches=result_matches,
@@ -1198,37 +1212,55 @@ def delete_user(uid):
         flash("Compte supprimÃ©.", "warning")
     return redirect(url_for("admin_dashboard"))
 
-@app.post("/admin/results/upload")
+@app.route("/admin/results/upload", methods=["GET", "POST"])
 @developer_required
 def admin_upload_results():
-    exam_type = request.form.get("exam_type", "").strip()
-    if exam_type not in RESULT_EXAM_TYPES:
-        flash("نوع المسابقة غير صحيح.", "danger")
-        return redirect(url_for("admin_dashboard") + "#national-results")
-    file = request.files.get("file")
-    if not file or not file.filename:
-        flash("يرجى اختيار ملف Excel.", "danger")
-        return redirect(url_for("admin_dashboard") + "#national-results")
-    if not allowed(file.filename, EXCEL_EXT):
-        flash("الملفات المدعومة هي xlsx و xlsm فقط.", "danger")
+    if request.method == "GET":
         return redirect(url_for("admin_dashboard") + "#national-results")
     try:
+        exam_type = request.form.get("exam_type", "").strip()
+        if exam_type not in RESULT_EXAM_TYPES:
+            flash("نوع المسابقة غير صحيح.", "danger")
+            return redirect(url_for("admin_dashboard") + "#national-results")
+        file = request.files.get("file")
+        if not file or not file.filename:
+            flash("يرجى اختيار ملف Excel.", "danger")
+            return redirect(url_for("admin_dashboard") + "#national-results")
+        if not allowed(file.filename, EXCEL_EXT):
+            flash("الملفات المدعومة هي xlsx و xlsm فقط. من Google Sheets اختر: Download ثم Microsoft Excel (.xlsx).", "danger")
+            return redirect(url_for("admin_dashboard") + "#national-results")
         parsed_rows = parse_results_workbook(file)
-    except Exception as exc:
-        flash(f"تعذر قراءة ملف Excel: {exc}", "danger")
-        return redirect(url_for("admin_dashboard") + "#national-results")
-    if not parsed_rows:
-        flash("لم يتم العثور على نتائج داخل الملف.", "warning")
-        return redirect(url_for("admin_dashboard") + "#national-results")
-
-    filename = secure_filename(file.filename) or "results.xlsx"
-    try:
+        if not parsed_rows:
+            flash("لم يتم العثور على نتائج داخل الملف.", "warning")
+            return redirect(url_for("admin_dashboard") + "#national-results")
+        filename = secure_filename(file.filename) or "results.xlsx"
         insert_national_results(exam_type, filename, parsed_rows, session.get("user_id"))
+        flash(f"تم استيراد {len(parsed_rows)} نتيجة في {RESULT_EXAM_LABELS[exam_type]}. ستظهر مباشرة داخل التطبيق.", "success")
     except Exception as exc:
         app.logger.exception("National results import failed")
-        flash(f"تعذر حفظ النتائج في قاعدة البيانات: {exc}", "danger")
+        flash(f"تعذر معالجة ملف Excel: {exc}", "danger")
         return redirect(url_for("admin_dashboard") + "#national-results")
-    flash(f"تم استيراد {len(parsed_rows)} نتيجة في {RESULT_EXAM_LABELS[exam_type]}. ستظهر مباشرة داخل التطبيق.", "success")
+    return redirect(url_for("admin_dashboard") + "#national-results")
+
+@app.post("/admin/results/uploads/<int:upload_id>/delete")
+@developer_required
+def admin_delete_results_upload(upload_id):
+    try:
+        with db() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM national_exam_results WHERE upload_id=%s", (upload_id,))
+            deleted_rows = cur.rowcount
+            cur.execute("DELETE FROM result_uploads WHERE id=%s", (upload_id,))
+            deleted_uploads = cur.rowcount
+            conn.commit()
+            cur.close()
+        if deleted_uploads:
+            flash(f"تم حذف دفعة النتائج مع {deleted_rows} نتيجة مرتبطة بها.", "warning")
+        else:
+            flash("دفعة النتائج غير موجودة.", "warning")
+    except Exception as exc:
+        app.logger.exception("National results delete failed")
+        flash(f"تعذر حذف دفعة النتائج: {exc}", "danger")
     return redirect(url_for("admin_dashboard") + "#national-results")
 
 # ===== Tableau de bord Finance =====

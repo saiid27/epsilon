@@ -366,6 +366,14 @@
               <div class="fw-bold">{{ label }}</div>
               <div class="fs-4 text-primary fw-black">{{ summary.total if summary else 0 }}</div>
               <div class="small text-muted">نتيجة محفوظة</div>
+              {% if is_developer and summary and summary.upload_id %}
+              <form method="POST"
+                    action="{{ url_for('admin_delete_results_upload', upload_id=summary.upload_id) }}"
+                    onsubmit="return confirm('حذف نتائج {{ label }} الحالية؟')"
+                    class="mt-2">
+                <button class="btn btn-outline-danger btn-sm w-100">حذف</button>
+              </form>
+              {% endif %}
             </div>
           </div>
           {% endfor %}
@@ -373,6 +381,44 @@
       </div>
     </div>
   </div>
+
+  {% if result_uploads %}
+  <div class="card p-3 shadow-sm mt-3">
+    <h6 class="mb-3">آخر ملفات Excel المعالجة</h6>
+    <div class="table-responsive">
+      <table class="table table-bordered align-middle text-center bg-white">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th><th>المسابقة</th><th>اسم الملف</th><th>النتائج النشطة</th><th>بواسطة</th><th>التاريخ</th><th>إجراء</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for upload in result_uploads %}
+          <tr>
+            <td>{{ upload.id }}</td>
+            <td>{{ result_exam_labels.get(upload.exam_type, upload.exam_type) }}</td>
+            <td>{{ upload.original_filename }}</td>
+            <td>{{ upload.active_rows }}</td>
+            <td>{{ upload.uploaded_by_name or '-' }}</td>
+            <td>{{ upload.uploaded_at.strftime('%Y-%m-%d %H:%M') if upload.uploaded_at else '-' }}</td>
+            <td>
+              {% if is_developer %}
+              <form method="POST"
+                    action="{{ url_for('admin_delete_results_upload', upload_id=upload.id) }}"
+                    onsubmit="return confirm('حذف هذه الدفعة ونتائجها؟')">
+                <button class="btn btn-outline-danger btn-sm">حذف</button>
+              </form>
+              {% else %}
+              -
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
 
   <div class="card p-3 shadow-sm mt-3">
     <h6 class="mb-3">بحث في النتائج كما يظهر في التطبيق</h6>
@@ -396,7 +442,7 @@
       <table class="table table-bordered align-middle text-center bg-white">
         <thead class="table-dark">
           <tr>
-            <th>رقم المترشح</th><th>الاسم الكامل</th><th>المركز</th><th>المعدل</th><th>القرار</th><th>الرتبة</th>
+            <th>رقم المترشح</th><th>الاسم الكامل</th><th>المركز</th><th>المعدل</th><th>الولاية</th><th>القرار</th><th>الرتبة</th>
           </tr>
         </thead>
         <tbody>
@@ -406,11 +452,12 @@
             <td>{{ r.full_name }}</td>
             <td>{{ r.center_name or '-' }}</td>
             <td>{{ r.score or '-' }}</td>
+            <td>{{ r.wilaya or '-' }}</td>
             <td>{{ r.decision or '-' }}</td>
             <td>{{ r.rank or '-' }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="6">لا توجد نتيجة مطابقة.</td></tr>
+          <tr><td colspan="7">لا توجد نتيجة مطابقة.</td></tr>
           {% endfor %}
         </tbody>
       </table>

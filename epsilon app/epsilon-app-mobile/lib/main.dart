@@ -3642,12 +3642,9 @@ class NationalResultCard extends StatelessWidget {
           ResultInfoRow(label: 'الاسم الكامل', value: result.fullName),
           ResultInfoRow(label: 'المركز', value: result.centerName),
           ResultInfoRow(label: 'المعدل', value: result.score),
+          ResultInfoRow(label: 'الولاية', value: result.wilaya),
           ResultInfoRow(label: 'القرار', value: result.decision),
           ResultInfoRow(label: 'الرتبة', value: result.rank),
-          ResultInfoRow(label: 'الولاية', value: result.wilaya),
-          ResultInfoRow(label: 'المقاطعة', value: result.moughataa),
-          ResultInfoRow(label: 'محل الميلاد', value: result.birthPlace),
-          ResultInfoRow(label: 'تاريخ الميلاد', value: result.birthDate),
         ],
       ),
     );
