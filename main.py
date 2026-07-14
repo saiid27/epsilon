@@ -396,7 +396,11 @@ def home():
                                 "offers_dashboard" if r=="marketer" else
                                 "teacher_dashboard" if r=="teacher" else
                                 "student_dashboard"))
-    return render_template("home.html", free_pdfs=fetch_free_pdfs(active_only=True))
+    return render_template("home.html")
+
+@app.route("/results")
+def public_results_home():
+    return render_template("public_results_home.html")
 
 @app.route("/results/<exam_type>")
 def public_results_search(exam_type):

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>صفحة النتائج | Epsilon Education</title>
+  <meta name="description" content="صفحة نتائج المسابقات الوطنية من Epsilon Education.">
+  <link rel="canonical" href="{{ url_for('home', _external=True) }}">
+  <meta property="og:title" content="صفحة النتائج | Epsilon Education">
+  <meta property="og:description" content="اختر نوع المسابقة للاطلاع على النتائج.">
+  <meta property="og:image" content="{{ url_for('static', filename='epsilon.svg', _external=True) }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #2f5bea;
+      --blue-dark: #2457d6;
+      --ink: #111827;
+      --muted: #64748b;
+      --line: #e5eaf5;
+      --shadow: 0 12px 28px rgba(31, 41, 71, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #fff;
+      color: var(--ink);
+      font-family: "Tajawal", system-ui, sans-serif;
+    }
+
+    .page {
+      width: min(100% - 34px, 360px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 12px 0 22px;
+    }
+
+    .topbar {
+      min-height: 32px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      direction: ltr;
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .brand img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+    }
+
+    .top-actions {
+      display: inline-flex;
+      gap: 6px;
+    }
+
+    .top-link {
+      min-height: 28px;
+      padding: 0 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: var(--blue);
+      background: #fff;
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1.1;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .hero {
+      min-height: 70px;
+      padding: 13px 15px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-radius: 15px;
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(47, 91, 234, .18);
+    }
+
+    .hero svg {
+      width: 28px;
+      height: 28px;
+      flex: 0 0 auto;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.1;
+      font-weight: 900;
+    }
+
+    .hero p {
+      margin: 4px 0 0;
+      color: rgba(255, 255, 255, .78);
+      font-size: 12px;
+      line-height: 1.35;
+      font-weight: 800;
+    }
+
+    .offers {
+      margin-top: 12px;
+    }
+
+    .offer-stage {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      max-height: 178px;
+      aspect-ratio: 16 / 9;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #f8fbff;
+      box-shadow: var(--shadow);
+    }
+
+    .offer-stage img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    .offer-empty {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+    }
+
+    .offer-empty img {
+      width: 118px;
+      height: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 18px rgba(47, 91, 234, .12));
+    }
+
+    .offer-dots {
+      position: absolute;
+      inset-inline: 0;
+      bottom: 8px;
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .offer-dot {
+      width: 6px;
+      height: 6px;
+      border: 0;
+      border-radius: 999px;
+      padding: 0;
+      background: rgba(255, 255, 255, .7);
+    }
+
+    .offer-dot.active { background: var(--blue); }
+
+    .tiles {
+      margin-top: 46px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .tile {
+      min-width: 0;
+      aspect-ratio: 1 / 1;
+      max-height: 96px;
+      padding: 8px 6px;
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      background: var(--blue-dark);
+      color: #fff;
+      text-decoration: none;
+      box-shadow: 0 12px 24px rgba(36, 87, 214, .18);
+      transition: transform .16s ease, box-shadow .16s ease;
+    }
+
+    .tile:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 30px rgba(36, 87, 214, .24);
+    }
+
+    .tile svg {
+      width: 27px;
+      height: 27px;
+      flex: 0 0 auto;
+    }
+
+    .tile span {
+      color: #fff;
+      text-align: center;
+      font-size: 16px;
+      line-height: 1.13;
+      font-weight: 900;
+    }
+
+    .text-section {
+      display: none;
+      margin-top: 30px;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #f8fbff;
+      box-shadow: var(--shadow);
+    }
+
+    .text-section.active { display: block; }
+
+    .text-section h2 {
+      margin: 0 0 6px;
+      color: var(--blue-dark);
+      font-size: 16px;
+      line-height: 1.25;
+      font-weight: 900;
+    }
+
+    .text-section p {
+      margin: 0;
+      color: #334155;
+      font-size: 13px;
+      line-height: 1.55;
+      font-weight: 800;
+      white-space: pre-line;
+    }
+
+    .contact {
+      min-height: 48px;
+      margin-top: 42px;
+      border-radius: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      color: #fff;
+      background: var(--blue-dark);
+      font-size: 17px;
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .contact svg {
+      width: 21px;
+      height: 21px;
+    }
+
+    .footer {
+      margin-top: 12px;
+      color: var(--muted);
+      text-align: center;
+      direction: ltr;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .footer-links {
+      margin-top: 14px;
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .footer-links a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    @media (max-width: 390px) {
+      .page { width: min(100% - 30px, 340px); }
+      .brand span { display: none; }
+      .hero h1 { font-size: 20px; }
+      .hero p { font-size: 11px; }
+      .offer-stage { max-height: 160px; }
+      .tiles { margin-top: 40px; gap: 8px; }
+      .tile { max-height: 88px; border-radius: 13px; }
+      .tile svg { width: 25px; height: 25px; }
+      .tile span { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <nav class="topbar" aria-label="روابط الموقع">
+      <a class="brand" href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='epsilon.svg') }}" alt="">
+        <span>epsilon education</span>
+      </a>
+      <div class="top-actions">
+        <a class="top-link" href="{{ url_for('login') }}">تسجيل الدخول</a>
+        <a class="top-link" href="{{ url_for('register') }}">إنشاء حساب</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M8 7h8M8 12h5M8 17h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="2.2"/>
+        <path d="m15.5 12.5 1.5 1.5 3-3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <h1>صفحة النتائج</h1>
+        <p>اختر نوع المسابقة للاطلاع على النتائج</p>
+      </div>
+    </section>
+
+    <section class="offers" aria-label="العروض">
+      <div class="offer-stage" id="offerStage">
+        <div class="offer-empty">
+          <img src="{{ url_for('static', filename='epsilon.svg') }}" alt="Epsilon Education">
+        </div>
+      </div>
+    </section>
+
+    <section class="tiles" aria-label="أنواع النتائج">
+      <a class="tile" href="{{ url_for('public_results_search', exam_type='bac-first') }}">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7 4h10v6a5 5 0 0 1-10 0V4Z" stroke="currentColor" stroke-width="2.2"/>
+          <path d="M7 7H4v2a3 3 0 0 0 3 3M17 7h3v2a3 3 0 0 1-3 3M12 15v4M9 20h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <span>الباكالوريا<br>الدورة الأولى</span>
+      </a>
+      <a class="tile" href="{{ url_for('public_results_search', exam_type='brevet') }}">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M5 5.5A3.5 3.5 0 0 1 8.5 2H20v17H8.5A3.5 3.5 0 0 0 5 22V5.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M9 6h7M9 10h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <span>ابريفة</span>
+      </a>
+      <a class="tile" href="{{ url_for('public_results_search', exam_type='concours') }}">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m2 9 10-5 10 5-10 5L2 9Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M6 11.5V16c2.7 2 9.3 2 12 0v-4.5" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M22 9v6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <span>كونكور</span>
+      </a>
+    </section>
+
+    <section class="text-section" id="textSection"></section>
+
+    <a class="contact" href="{{ url_for('contact') }}">
+      <span>طلب التواصل</span>
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M5 12a7 7 0 0 1 14 0v4a2 2 0 0 1-2 2h-2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M9 18h3a2 2 0 0 0 2-2v-1h-3a2 2 0 0 0-2 2v1Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+      </svg>
+    </a>
+
+    <div class="footer">epsilon | dev. med said mohameden</div>
+    <div class="footer-links">
+      <a href="{{ url_for('about') }}">من نحن</a>
+      <a href="{{ url_for('privacy') }}">سياسة الخصوصية</a>
+      <a href="{{ url_for('contact') }}">تواصل معنا</a>
+    </div>
+  </main>
+
+  <script>
+    const offerStage = document.getElementById('offerStage');
+    const textSection = document.getElementById('textSection');
+    const state = { offers: [], index: 0, timer: null };
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function renderOffer() {
+      clearTimeout(state.timer);
+      if (!state.offers.length) return;
+      const offer = state.offers[state.index];
+      offerStage.innerHTML = `
+        <img src="${escapeHtml(offer.imageUrl)}" alt="${escapeHtml(offer.title || 'عرض')}">
+        ${state.offers.length > 1 ? `
+          <div class="offer-dots">
+            ${state.offers.map((_, index) => `<button class="offer-dot ${index === state.index ? 'active' : ''}" type="button" aria-label="عرض ${index + 1}"></button>`).join('')}
+          </div>
+        ` : ''}
+      `;
+      if (state.offers.length > 1) {
+        const duration = Math.max(1, Number(offer.durationSeconds || 5));
+        state.timer = setTimeout(() => {
+          state.index = (state.index + 1) % state.offers.length;
+          renderOffer();
+        }, duration * 1000);
+      }
+    }
+
+    async function loadOffers() {
+      try {
+        const response = await fetch('/api/offers');
+        const data = await response.json();
+        state.offers = (data.offers || []).filter((offer) => offer.imageUrl);
+        if (state.offers.length) renderOffer();
+
+        const text = data.textSection || {};
+        if (text.active && (text.title || text.body)) {
+          textSection.classList.add('active');
+          textSection.innerHTML = `
+            ${text.title ? `<h2>${escapeHtml(text.title)}</h2>` : ''}
+            ${text.body ? `<p>${escapeHtml(text.body)}</p>` : ''}
+          `;
+        }
+      } catch (_) {
+        state.offers = [];
+      }
+    }
+
+    loadOffers();
+  </script>
+</body>
+</html>
