@@ -1185,7 +1185,7 @@ def admin_dashboard():
                         WHERE exam_type=%s
                           AND {concours_number_match_sql()}
                         ORDER BY id ASC
-                        LIMIT 20
+                        LIMIT 1
                     """, (result_exam, normalized_number, normalized_number))
                 else:
                     cur.execute("""
@@ -2736,7 +2736,7 @@ def api_search_results(exam_type):
                     WHERE exam_type=%s
                       AND {concours_number_match_sql()}
                     ORDER BY id ASC
-                    LIMIT 20
+                    LIMIT 1
                 """, (exam_type, normalized_number, normalized_number))
             else:
                 cur.execute("""
