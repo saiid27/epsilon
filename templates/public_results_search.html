@@ -259,26 +259,30 @@
       overflow: hidden;
     }
 
-    .bubble {
+    .confetti {
       position: absolute;
-      bottom: -28px;
-      width: var(--size);
-      height: var(--size);
-      border-radius: 999px;
+      left: 50%;
+      bottom: 12vh;
+      width: var(--w);
+      height: var(--h);
+      border-radius: 3px;
       background: var(--color);
-      opacity: .86;
-      animation: bubbleRise var(--duration) ease-out forwards;
-      box-shadow: 0 8px 22px rgba(47, 91, 234, .16);
+      transform: translate(-50%, 0) rotate(0deg);
+      animation: confettiPop var(--duration) cubic-bezier(.12, .72, .2, 1) forwards;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, .10);
     }
 
-    @keyframes bubbleRise {
+    @keyframes confettiPop {
       0% {
-        transform: translate3d(0, 0, 0) scale(.65);
+        transform: translate(-50%, 0) scale(.25) rotate(0deg);
         opacity: 0;
       }
-      12% { opacity: .9; }
+      10% { opacity: 1; }
       100% {
-        transform: translate3d(var(--drift), -105vh, 0) scale(1.1);
+        transform: translate(
+          calc(-50% + var(--x)),
+          var(--y)
+        ) scale(var(--scale)) rotate(var(--rotate));
         opacity: 0;
       }
     }
@@ -376,6 +380,7 @@
       score: 'المعدل',
       decision: 'القرار',
       rank: 'الترتيب',
+      series: 'الشعبة',
     };
 
     function escapeHtml(value) {
@@ -418,33 +423,58 @@
       applauseAudio.play().catch(() => {});
     }
 
-    function launchBubbles() {
-      const colors = ['#2f5bea', '#10b981', '#facc15', '#ffffff', '#60a5fa'];
+    function launchConfetti() {
+      const colors = ['#2f5bea', '#10b981', '#facc15', '#ef4444', '#ffffff', '#60a5fa'];
       celebration.innerHTML = '';
-      for (let i = 0; i < 34; i += 1) {
-        const bubble = document.createElement('span');
-        const size = 8 + Math.random() * 18;
-        bubble.className = 'bubble';
-        bubble.style.left = `${Math.random() * 100}%`;
-        bubble.style.setProperty('--size', `${size}px`);
-        bubble.style.setProperty('--duration', `${2.2 + Math.random() * 1.8}s`);
-        bubble.style.setProperty('--drift', `${(Math.random() * 120) - 60}px`);
-        bubble.style.setProperty('--color', colors[i % colors.length]);
-        bubble.style.animationDelay = `${Math.random() * .45}s`;
-        celebration.appendChild(bubble);
+      for (let burst = 0; burst < 3; burst += 1) {
+        for (let i = 0; i < 28; i += 1) {
+          const piece = document.createElement('span');
+          const angle = (Math.PI * 2 * i) / 28 + Math.random() * .25;
+          const distance = 120 + Math.random() * 190;
+          const x = Math.cos(angle) * distance;
+          const y = -70 - Math.abs(Math.sin(angle)) * distance - Math.random() * 150;
+          piece.className = 'confetti';
+          piece.style.left = `${24 + burst * 26 + Math.random() * 8}%`;
+          piece.style.setProperty('--w', `${5 + Math.random() * 7}px`);
+          piece.style.setProperty('--h', `${9 + Math.random() * 12}px`);
+          piece.style.setProperty('--x', `${x}px`);
+          piece.style.setProperty('--y', `${y}px`);
+          piece.style.setProperty('--scale', `${.75 + Math.random() * .65}`);
+          piece.style.setProperty('--rotate', `${Math.round((Math.random() * 720) - 360)}deg`);
+          piece.style.setProperty('--duration', `${1.15 + Math.random() * 1.25}s`);
+          piece.style.setProperty('--color', colors[(i + burst) % colors.length]);
+          piece.style.animationDelay = `${burst * .18 + Math.random() * .12}s`;
+          celebration.appendChild(piece);
+        }
       }
       window.setTimeout(() => {
         celebration.innerHTML = '';
-      }, 4600);
+      }, 3300);
     }
 
     function celebrateSuccess() {
       playApplause();
-      launchBubbles();
+      launchConfetti();
+    }
+
+    function seriesFromRawData(result) {
+      const raw = result.rawData || {};
+      for (const key of ['SERIE', 'Série', 'Serie', 'serie', 'Type', 'type', 'الشعبة']) {
+        const value = raw[key];
+        if (value !== undefined && value !== null && String(value).trim()) {
+          return String(value).trim();
+        }
+      }
+      return '';
     }
 
     function renderResult(result) {
+      const series = seriesFromRawData(result);
       const keys = ['fullName', 'candidateNumber'];
+      if (series) {
+        result.series = series;
+        keys.push('series');
+      }
       ['birthPlace', 'birthDate', 'centerName', 'wilaya', 'moughataa', 'score', 'decision', 'rank'].forEach((key) => {
         if (result[key]) keys.push(key);
       });
