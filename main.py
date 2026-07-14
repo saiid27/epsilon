@@ -2293,10 +2293,18 @@ def insert_national_results(exam_type, filename, parsed_rows, uploaded_by):
     return {"id": upload_id, "uploaded_at": uploaded_at}
 
 def api_result_payload(row):
+    raw_data = row.get("raw_data") or {}
+    candidate_number = row.get("candidate_number") or ""
+    if row.get("exam_type") == "concours":
+        candidate_number = (
+            raw_data.get("Numéro Ins")
+            or raw_data.get("Numero Ins")
+            or candidate_number
+        )
     return {
         "id": str(row["id"]),
         "examType": row["exam_type"],
-        "candidateNumber": row.get("candidate_number") or "",
+        "candidateNumber": candidate_number,
         "fullName": row.get("full_name") or "",
         "birthPlace": row.get("birth_place") or "",
         "birthDate": row.get("birth_date") or "",
@@ -2306,7 +2314,7 @@ def api_result_payload(row):
         "score": row.get("score") or "",
         "decision": row.get("decision") or "",
         "rank": row.get("rank") or "",
-        "rawData": row.get("raw_data") or {},
+        "rawData": raw_data,
     }
 
 def api_current_user():
