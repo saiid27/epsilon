@@ -42,19 +42,19 @@
     a { color: inherit; }
 
     .page {
-      width: min(100% - 28px, 440px);
+      width: min(100% - 30px, 390px);
       min-height: 100vh;
       margin: 0 auto;
-      padding: 18px 0 28px;
+      padding: 14px 0 24px;
     }
 
     .topbar {
-      min-height: 44px;
+      min-height: 34px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
 
     .brand {
@@ -64,13 +64,13 @@
       direction: ltr;
       text-decoration: none;
       color: var(--blue);
-      font-size: 18px;
+      font-size: 15px;
       font-weight: 900;
     }
 
     .brand img {
-      width: 34px;
-      height: 34px;
+      width: 26px;
+      height: 26px;
       object-fit: contain;
     }
 
@@ -81,8 +81,8 @@
     }
 
     .top-link {
-      min-height: 34px;
-      padding: 0 12px;
+      min-height: 30px;
+      padding: 0 10px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -91,20 +91,20 @@
       color: var(--blue);
       background: #fff;
       text-decoration: none;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
     }
 
     .results-header {
-      min-height: 96px;
-      padding: 20px;
+      min-height: 78px;
+      padding: 15px 16px;
       display: flex;
       align-items: center;
       gap: 16px;
-      border-radius: 18px;
+      border-radius: 16px;
       color: #fff;
       background: var(--blue);
-      box-shadow: 0 18px 34px rgba(47, 91, 234, .22);
+      box-shadow: 0 12px 26px rgba(47, 91, 234, .18);
     }
 
     .header-icon,
@@ -118,27 +118,27 @@
     }
 
     .header-icon svg {
-      width: 38px;
-      height: 38px;
+      width: 30px;
+      height: 30px;
     }
 
     .results-header h1 {
       margin: 0;
-      font-size: 28px;
+      font-size: 23px;
       line-height: 1.1;
       font-weight: 900;
     }
 
     .results-header p {
-      margin: 8px 0 0;
+      margin: 5px 0 0;
       color: rgba(255, 255, 255, .78);
-      font-size: 15px;
+      font-size: 13px;
       line-height: 1.35;
       font-weight: 800;
     }
 
     .offers {
-      margin-top: 18px;
+      margin-top: 14px;
     }
 
     .offer-stage {
@@ -146,7 +146,8 @@
       overflow: hidden;
       width: 100%;
       aspect-ratio: 16 / 9;
-      border-radius: 16px;
+      max-height: 205px;
+      border-radius: 14px;
       background: #edf2ff;
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
@@ -195,26 +196,27 @@
     .offer-dot.active { background: var(--blue); }
 
     .result-tiles {
-      margin-top: 76px;
+      margin-top: 54px;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
+      gap: 10px;
     }
 
     .result-tile {
       aspect-ratio: 1 / 1;
+      max-height: 112px;
       border: 0;
-      border-radius: 18px;
+      border-radius: 15px;
       background: var(--blue-dark);
       color: #fff;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      padding: 10px;
+      gap: 9px;
+      padding: 9px;
       cursor: pointer;
-      box-shadow: 0 16px 32px rgba(36, 87, 214, .22);
+      box-shadow: 0 12px 26px rgba(36, 87, 214, .18);
       transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
     }
 
@@ -228,15 +230,15 @@
     }
 
     .tile-icon svg {
-      width: 38px;
-      height: 38px;
+      width: 30px;
+      height: 30px;
     }
 
     .result-tile span {
       max-width: 100%;
       color: #fff;
       text-align: center;
-      font-size: 22px;
+      font-size: 18px;
       line-height: 1.18;
       font-weight: 900;
     }
@@ -316,9 +318,9 @@
     .search-button,
     .contact-button {
       width: 100%;
-      min-height: 56px;
+      min-height: 50px;
       border: 0;
-      border-radius: 18px;
+      border-radius: 16px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -326,7 +328,7 @@
       color: #fff;
       text-decoration: none;
       cursor: pointer;
-      font: 900 20px "Tajawal", system-ui, sans-serif;
+      font: 900 18px "Tajawal", system-ui, sans-serif;
     }
 
     .search-button {
@@ -340,14 +342,14 @@
     }
 
     .contact-button {
-      margin-top: 72px;
+      margin-top: 50px;
       background: var(--blue-dark);
     }
 
     .text-section {
       display: none;
-      margin-top: 34px;
-      padding: 18px;
+      margin-top: 28px;
+      padding: 15px;
       background: #f8fbff;
     }
 
@@ -356,14 +358,14 @@
     .text-section h2 {
       margin: 0 0 8px;
       color: var(--blue-dark);
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 900;
     }
 
     .text-section p {
       margin: 0;
       color: #334155;
-      font-size: 16px;
+      font-size: 14px;
       line-height: 1.65;
       font-weight: 700;
       white-space: pre-line;
@@ -439,7 +441,7 @@
     .result-value {
       direction: auto;
       color: var(--ink);
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 900;
       overflow-wrap: anywhere;
       text-align: left;
@@ -449,7 +451,7 @@
       margin-top: 16px;
       color: var(--muted);
       text-align: center;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 900;
       direction: ltr;
     }
@@ -471,14 +473,14 @@
     .hidden { display: none !important; }
 
     @media (max-width: 420px) {
-      .page { width: min(100% - 22px, 390px); }
+      .page { width: min(100% - 30px, 370px); }
       .brand span { display: none; }
-      .results-header h1 { font-size: 25px; }
-      .results-header p { font-size: 14px; }
-      .result-tiles { gap: 10px; }
-      .result-tile { border-radius: 16px; }
-      .tile-icon svg { width: 34px; height: 34px; }
-      .result-tile span { font-size: 19px; }
+      .results-header h1 { font-size: 22px; }
+      .results-header p { font-size: 13px; }
+      .result-tiles { gap: 9px; margin-top: 48px; }
+      .result-tile { border-radius: 14px; max-height: 104px; }
+      .tile-icon svg { width: 28px; height: 28px; }
+      .result-tile span { font-size: 17px; }
       .result-row {
         grid-template-columns: 1fr;
         gap: 7px;
