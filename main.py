@@ -1178,14 +1178,24 @@ def admin_dashboard():
             cur = dict_cursor(conn)
             if result_query.isdigit():
                 normalized_number = normalize_candidate_number(result_query)
-                cur.execute("""
-                    SELECT *
-                    FROM national_exam_results
-                    WHERE exam_type=%s
-                      AND COALESCE(NULLIF(regexp_replace(candidate_number, '\\D', '', 'g'), ''), '0')::bigint = %s::bigint
-                    ORDER BY id ASC
-                    LIMIT 1
-                """, (result_exam, normalized_number))
+                if result_exam == "concours":
+                    cur.execute(f"""
+                        SELECT *
+                        FROM national_exam_results
+                        WHERE exam_type=%s
+                          AND {concours_number_match_sql()}
+                        ORDER BY id ASC
+                        LIMIT 20
+                    """, (result_exam, normalized_number, normalized_number))
+                else:
+                    cur.execute("""
+                        SELECT *
+                        FROM national_exam_results
+                        WHERE exam_type=%s
+                          AND COALESCE(NULLIF(regexp_replace(candidate_number, '\\D', '', 'g'), ''), '0')::bigint = %s::bigint
+                        ORDER BY id ASC
+                        LIMIT 1
+                    """, (result_exam, normalized_number))
             else:
                 cur.execute("""
                     SELECT *
@@ -2161,6 +2171,14 @@ def normalize_candidate_number(value):
     normalized = digits.lstrip("0")
     return normalized or ("0" if digits else "")
 
+def concours_number_match_sql():
+    return """
+        (
+            COALESCE(NULLIF(regexp_replace(candidate_number, '\\D', '', 'g'), ''), '0')::bigint = %s::bigint
+            OR COALESCE(NULLIF(regexp_replace(COALESCE(raw_data->>'Numéro Ins', raw_data->>'Numero Ins', ''), '\\D', '', 'g'), ''), '0')::bigint = %s::bigint
+        )
+    """
+
 def db_text(value, max_length=None):
     text = excel_cell_text(value)
     if not text:
@@ -2703,14 +2721,24 @@ def api_search_results(exam_type):
         cur = dict_cursor(conn)
         if query.isdigit():
             normalized_number = normalize_candidate_number(query)
-            cur.execute("""
-                SELECT *
-                FROM national_exam_results
-                WHERE exam_type=%s
-                  AND COALESCE(NULLIF(regexp_replace(candidate_number, '\\D', '', 'g'), ''), '0')::bigint = %s::bigint
-                ORDER BY id ASC
-                LIMIT 1
-            """, (exam_type, normalized_number))
+            if exam_type == "concours":
+                cur.execute(f"""
+                    SELECT *
+                    FROM national_exam_results
+                    WHERE exam_type=%s
+                      AND {concours_number_match_sql()}
+                    ORDER BY id ASC
+                    LIMIT 20
+                """, (exam_type, normalized_number, normalized_number))
+            else:
+                cur.execute("""
+                    SELECT *
+                    FROM national_exam_results
+                    WHERE exam_type=%s
+                      AND COALESCE(NULLIF(regexp_replace(candidate_number, '\\D', '', 'g'), ''), '0')::bigint = %s::bigint
+                    ORDER BY id ASC
+                    LIMIT 1
+                """, (exam_type, normalized_number))
         else:
             cur.execute("""
                 SELECT *
