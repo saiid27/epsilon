@@ -734,7 +734,9 @@ def ensure_courses_table():
             CREATE TABLE IF NOT EXISTS offer_slides (
                 id SERIAL PRIMARY KEY,
                 title VARCHAR(160) NOT NULL DEFAULT '',
-                image_file VARCHAR(255) NOT NULL,
+                image_file VARCHAR(255),
+                image_data BYTEA,
+                image_mime VARCHAR(80),
                 duration_seconds INT NOT NULL DEFAULT 5,
                 sort_order INT NOT NULL DEFAULT 0,
                 active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -742,6 +744,9 @@ def ensure_courses_table():
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        cur.execute("ALTER TABLE offer_slides ALTER COLUMN image_file DROP NOT NULL")
+        cur.execute("ALTER TABLE offer_slides ADD COLUMN IF NOT EXISTS image_data BYTEA")
+        cur.execute("ALTER TABLE offer_slides ADD COLUMN IF NOT EXISTS image_mime VARCHAR(80)")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS in_person_students (
                 id SERIAL PRIMARY KEY,
@@ -932,8 +937,8 @@ def offer_slide_payload(row):
         "id": str(row["id"]),
         "title": row.get("title") or "",
         "imageUrl": url_for(
-            "static",
-            filename=f"uploads/offers/{row['image_file']}",
+            "api_offer_image",
+            slide_id=row["id"],
             _external=True,
         ),
         "durationSeconds": int(row.get("duration_seconds") or 5),
@@ -1268,14 +1273,23 @@ def offers_upload():
 
     base = secure_filename(image.filename) or "offer.webp"
     filename = f"offer_{int(time.time())}_{base}"
-    image.save(os.path.join(OFFERS_DIR, filename))
+    image_data = image.read()
+    image_mime = image.mimetype or "application/octet-stream"
     with db() as conn:
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO offer_slides
-                (title, image_file, duration_seconds, sort_order, active, created_by)
-            VALUES (%s,%s,%s,%s,TRUE,%s)
-        """, (title, filename, duration_seconds, sort_order, session.get("user_id")))
+                (title, image_file, image_data, image_mime, duration_seconds, sort_order, active, created_by)
+            VALUES (%s,%s,%s,%s,%s,%s,TRUE,(SELECT id FROM users WHERE id=%s))
+        """, (
+            title,
+            filename,
+            psycopg2.Binary(image_data),
+            image_mime,
+            duration_seconds,
+            sort_order,
+            session.get("user_id"),
+        ))
         conn.commit()
         cur.close()
     flash("تمت إضافة العرض.", "success")
@@ -1320,6 +1334,33 @@ def offers_delete(slide_id):
         remove_upload(OFFERS_DIR, slide.get("image_file"))
     flash("تم حذف العرض.", "success")
     return redirect(url_for("offers_dashboard"))
+
+@app.get("/api/offers/images/<int:slide_id>")
+def api_offer_image(slide_id):
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""
+            SELECT image_data, image_mime, image_file
+            FROM offer_slides
+            WHERE id=%s
+        """, (slide_id,))
+        slide = cur.fetchone()
+        cur.close()
+    if not slide:
+        return "Not found", 404
+    if slide.get("image_data") is not None:
+        data = bytes(slide["image_data"])
+        return Response(
+            data,
+            mimetype=slide.get("image_mime") or "application/octet-stream",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+    image_file = slide.get("image_file")
+    if image_file:
+        path = os.path.abspath(os.path.join(OFFERS_DIR, image_file))
+        if os.path.exists(path):
+            return redirect(url_for("static", filename=f"uploads/offers/{image_file}"))
+    return "Not found", 404
 
 # ===== Tableau de bord Admin =====
 @app.route("/admin")

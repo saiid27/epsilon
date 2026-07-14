@@ -105,7 +105,7 @@
         {% for slide in slides %}
         <tr>
           <td>
-            <img class="offer-thumb" src="{{ url_for('static', filename='uploads/offers/' + slide.image_file) }}" alt="">
+            <img class="offer-thumb" src="{{ url_for('api_offer_image', slide_id=slide.id) }}" alt="">
           </td>
           <td colspan="4">
             <form method="POST" action="{{ url_for('offers_update', slide_id=slide.id) }}" class="row g-2 align-items-center">
