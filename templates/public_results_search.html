@@ -251,6 +251,38 @@
 
     .hidden { display: none !important; }
 
+    .celebration {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .bubble {
+      position: absolute;
+      bottom: -28px;
+      width: var(--size);
+      height: var(--size);
+      border-radius: 999px;
+      background: var(--color);
+      opacity: .86;
+      animation: bubbleRise var(--duration) ease-out forwards;
+      box-shadow: 0 8px 22px rgba(47, 91, 234, .16);
+    }
+
+    @keyframes bubbleRise {
+      0% {
+        transform: translate3d(0, 0, 0) scale(.65);
+        opacity: 0;
+      }
+      12% { opacity: .9; }
+      100% {
+        transform: translate3d(var(--drift), -105vh, 0) scale(1.1);
+        opacity: 0;
+      }
+    }
+
     @media (max-width: 390px) {
       .page { width: min(100% - 30px, 340px); }
       .row { grid-template-columns: 1fr; gap: 5px; }
@@ -259,6 +291,9 @@
   </style>
 </head>
 <body>
+  <audio id="applauseAudio" src="{{ url_for('static', filename='sounds/applause.wav') }}" preload="auto"></audio>
+  <div class="celebration" id="celebration" aria-hidden="true"></div>
+
   <main class="page">
     <a class="back" href="{{ url_for('public_results_home') }}" aria-label="رجوع">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -327,6 +362,8 @@
     const centerSelect = document.getElementById('centerSelect');
     const searchButton = document.getElementById('searchButton');
     const resultsEl = document.getElementById('results');
+    const applauseAudio = document.getElementById('applauseAudio');
+    const celebration = document.getElementById('celebration');
 
     const labels = {
       fullName: 'الاسم الكامل',
@@ -375,6 +412,37 @@
       return String(result.decision || '').toLowerCase().includes('admis');
     }
 
+    function playApplause() {
+      if (!applauseAudio) return;
+      applauseAudio.currentTime = 0;
+      applauseAudio.play().catch(() => {});
+    }
+
+    function launchBubbles() {
+      const colors = ['#2f5bea', '#10b981', '#facc15', '#ffffff', '#60a5fa'];
+      celebration.innerHTML = '';
+      for (let i = 0; i < 34; i += 1) {
+        const bubble = document.createElement('span');
+        const size = 8 + Math.random() * 18;
+        bubble.className = 'bubble';
+        bubble.style.left = `${Math.random() * 100}%`;
+        bubble.style.setProperty('--size', `${size}px`);
+        bubble.style.setProperty('--duration', `${2.2 + Math.random() * 1.8}s`);
+        bubble.style.setProperty('--drift', `${(Math.random() * 120) - 60}px`);
+        bubble.style.setProperty('--color', colors[i % colors.length]);
+        bubble.style.animationDelay = `${Math.random() * .45}s`;
+        celebration.appendChild(bubble);
+      }
+      window.setTimeout(() => {
+        celebration.innerHTML = '';
+      }, 4600);
+    }
+
+    function celebrateSuccess() {
+      playApplause();
+      launchBubbles();
+    }
+
     function renderResult(result) {
       const keys = ['fullName', 'candidateNumber'];
       ['birthPlace', 'birthDate', 'centerName', 'wilaya', 'moughataa', 'score', 'decision', 'rank'].forEach((key) => {
@@ -418,6 +486,9 @@
         resultsEl.innerHTML = results.length
           ? results.map(renderResult).join('')
           : '<div class="message">لم يتم العثور على نتيجة مطابقة.</div>';
+        if (results.some(isSuccess)) {
+          celebrateSuccess();
+        }
       } catch (error) {
         resultsEl.innerHTML = `<div class="message error">${escapeHtml(error.message || 'حدث خطأ أثناء البحث.')}</div>`;
       } finally {
