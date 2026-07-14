@@ -880,6 +880,9 @@ def fetch_app_settings():
     defaults = {
         "paymentNumber": os.getenv("PAYMENT_NUMBER", "22334455"),
         "paymentAmount": os.getenv("PAYMENT_AMOUNT", "غير محدد"),
+        "offerTextTitle": "",
+        "offerTextBody": "",
+        "offerTextActive": "true",
     }
     try:
         ensure_courses_table()
@@ -897,7 +900,13 @@ def fetch_app_settings():
 
 def save_app_settings(values):
     ensure_courses_table()
-    allowed_keys = {"paymentNumber", "paymentAmount"}
+    allowed_keys = {
+        "paymentNumber",
+        "paymentAmount",
+        "offerTextTitle",
+        "offerTextBody",
+        "offerTextActive",
+    }
     cleaned = {
         key: str(value).strip()
         for key, value in values.items()
@@ -1220,8 +1229,20 @@ def offers_dashboard():
     return render_template(
         "offers.html",
         slides=slides,
+        settings=fetch_app_settings(),
         is_developer=is_developer(),
     )
+
+@app.post("/offers/text")
+@marketer_login_required
+def offers_text_update():
+    save_app_settings({
+        "offerTextTitle": request.form.get("offer_text_title", "").strip(),
+        "offerTextBody": request.form.get("offer_text_body", "").strip(),
+        "offerTextActive": "true" if request.form.get("offer_text_active") == "on" else "false",
+    })
+    flash("تم حفظ نص العروض.", "success")
+    return redirect(url_for("offers_dashboard"))
 
 @app.post("/offers/upload")
 @marketer_login_required
@@ -2938,7 +2959,15 @@ def api_archive_files():
 @app.get("/api/offers")
 def api_offers():
     slides = fetch_offer_slides(active_only=True)
-    return jsonify({"offers": [offer_slide_payload(slide) for slide in slides]})
+    settings = fetch_app_settings()
+    return jsonify({
+        "offers": [offer_slide_payload(slide) for slide in slides],
+        "textSection": {
+            "title": settings.get("offerTextTitle", ""),
+            "body": settings.get("offerTextBody", ""),
+            "active": settings.get("offerTextActive", "true") != "false",
+        },
+    })
 
 @app.get("/api/results/<exam_type>/centers")
 def api_result_centers(exam_type):

@@ -39,6 +39,31 @@
 
   <div class="card shadow-sm mb-4">
     <div class="card-body">
+      <h5 class="mb-3">نص يظهر في صفحة النتائج</h5>
+      <form method="POST" action="{{ url_for('offers_text_update') }}" class="row g-3">
+        <div class="col-12 col-md-4">
+          <label class="form-label">العنوان اختياري</label>
+          <input name="offer_text_title" class="form-control" value="{{ settings.offerTextTitle or '' }}" placeholder="مثلا: إعلان مهم">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">النص</label>
+          <textarea name="offer_text_body" class="form-control" rows="3" placeholder="اكتب النص الذي تريد إظهاره في التطبيق">{{ settings.offerTextBody or '' }}</textarea>
+        </div>
+        <div class="col-6 col-md-1 d-flex align-items-end justify-content-center">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="offer_text_active" id="offerTextActive" {% if settings.offerTextActive != 'false' %}checked{% endif %}>
+            <label class="form-check-label" for="offerTextActive">مفعل</label>
+          </div>
+        </div>
+        <div class="col-6 col-md-1 d-flex align-items-end">
+          <button class="btn btn-success w-100">حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
       <h5 class="mb-3">إضافة صورة عرض</h5>
       <form method="POST" action="{{ url_for('offers_upload') }}" enctype="multipart/form-data" class="row g-3">
         <div class="col-12 col-md-4">
