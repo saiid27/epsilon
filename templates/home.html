@@ -3,739 +3,839 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Epsilon Education | منصة تعليمية للدروس والملفات</title>
-  <meta name="description" content="Epsilon Education منصة تعليمية تجمع الدروس، التمارين، الفيديوهات، وملفات PDF في مكان واحد للطلاب.">
-  <meta name="keywords" content="Epsilon Education, ابسلون, إبسيلون, تعليم, دروس, ملفات PDF, منصة تعليمية">
+  <title>صفحة النتائج | Epsilon Education</title>
+  <meta name="description" content="صفحة نتائج المسابقات الوطنية من Epsilon Education: الباكالوريا، ابريفة، وكونكور.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="{{ url_for('home', _external=True) }}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Epsilon Education">
-  <meta property="og:title" content="Epsilon Education | منصة تعليمية للدروس والملفات">
-  <meta property="og:description" content="منصة تعليمية تجمع الدروس، التمارين، الفيديوهات، وملفات PDF في مكان واحد للطلاب.">
+  <meta property="og:title" content="صفحة النتائج | Epsilon Education">
+  <meta property="og:description" content="اختر نوع المسابقة وابحث عن النتيجة بسهولة.">
   <meta property="og:url" content="{{ url_for('home', _external=True) }}">
   <meta property="og:image" content="{{ url_for('static', filename='epsilon.svg', _external=True) }}">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Epsilon Education">
-  <meta name="twitter:description" content="منصة تعليمية للدروس والملفات التعليمية.">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "EducationalOrganization",
-    "name": "Epsilon Education",
-    "url": "{{ url_for('home', _external=True) }}",
-    "logo": "{{ url_for('static', filename='epsilon.svg', _external=True) }}",
-    "sameAs": [
-      "https://youtube.com/@epsiloneducation-t5j"
-    ]
-  }
-  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary: #2f5eea;
-      --primary-dark: #244bd0;
-      --ink: #1d2b53;
-      --muted: #7380a2;
-      --line: #e6ebf6;
-      --surface: #ffffff;
-      --bg: #f6f8fd;
-      --shadow: 0 22px 60px rgba(31, 50, 100, 0.12);
+      --blue: #2f5bea;
+      --blue-dark: #2457d6;
+      --green: #0f8a78;
+      --ink: #111827;
+      --muted: #64748b;
+      --line: #e5eaf5;
+      --soft: #f6f8ff;
+      --white: #ffffff;
+      --shadow: 0 18px 46px rgba(31, 41, 71, .10);
     }
 
     * { box-sizing: border-box; }
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(18px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes floatLogo {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-8px); }
-    }
-
-    @keyframes softPulse {
-      0%, 100% { box-shadow: 0 14px 30px rgba(47, 94, 234, .24); }
-      50% { box-shadow: 0 18px 38px rgba(47, 94, 234, .34); }
-    }
-
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: "Tajawal", sans-serif;
+      font-family: "Tajawal", system-ui, sans-serif;
       color: var(--ink);
-      background:
-        radial-gradient(circle at 9% 12%, rgba(47, 94, 234, .12) 0 64px, transparent 65px),
-        radial-gradient(circle at 91% 4%, rgba(13, 159, 121, .12) 0 76px, transparent 77px),
-        linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+      background: var(--white);
     }
 
-    .site {
-      width: min(520px, calc(100% - 36px));
+    a { color: inherit; }
+
+    .page {
+      width: min(100% - 28px, 440px);
       min-height: 100vh;
       margin: 0 auto;
-      display: grid;
-      grid-template-rows: auto 1fr auto;
+      padding: 18px 0 28px;
     }
 
-    .header {
-      min-height: 64px;
+    .topbar {
+      min-height: 44px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-direction: row-reverse;
       gap: 12px;
-      border-bottom: 1px solid rgba(230, 235, 246, .9);
+      margin-bottom: 16px;
     }
 
-    .logo {
+    .brand {
       display: inline-flex;
       align-items: center;
       gap: 8px;
       direction: ltr;
       text-decoration: none;
-      color: var(--primary);
+      color: var(--blue);
+      font-size: 18px;
+      font-weight: 900;
     }
 
-    .logo strong {
-      font: 600 24px/.95 "Cormorant Garamond", serif;
-      letter-spacing: .3px;
-      text-transform: lowercase;
+    .brand img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
     }
 
-    .social-links {
+    .top-actions {
       display: inline-flex;
       align-items: center;
       gap: 8px;
     }
 
-    .social-link {
+    .top-link {
+      min-height: 34px;
+      padding: 0 12px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
-      background: #fff;
-      color: #fff;
-      text-decoration: none;
+      border-radius: 10px;
       border: 1px solid var(--line);
-      box-shadow: 0 10px 24px rgba(31, 50, 100, .08);
-      transition: transform .2s ease, box-shadow .2s ease;
+      color: var(--blue);
+      background: #fff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 900;
     }
 
-    .social-link:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 16px 32px rgba(31, 50, 100, .13);
+    .results-header {
+      min-height: 96px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-radius: 18px;
+      color: #fff;
+      background: var(--blue);
+      box-shadow: 0 18px 34px rgba(47, 91, 234, .22);
     }
 
-    .social-link svg {
-      width: 21px;
-      height: 21px;
+    .header-icon,
+    .tile-icon,
+    .field-icon,
+    .row-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+    }
+
+    .header-icon svg {
+      width: 38px;
+      height: 38px;
+    }
+
+    .results-header h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.1;
+      font-weight: 900;
+    }
+
+    .results-header p {
+      margin: 8px 0 0;
+      color: rgba(255, 255, 255, .78);
+      font-size: 15px;
+      line-height: 1.35;
+      font-weight: 800;
+    }
+
+    .offers {
+      margin-top: 18px;
+    }
+
+    .offer-stage {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 16px;
+      background: #edf2ff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .offer-stage img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
       display: block;
     }
 
-    .store-link svg {
-      width: 22px;
-      height: 22px;
+    .offer-empty {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      background: #f8fbff;
     }
 
-    .store-link.apple svg {
-      width: 20px;
-      height: 20px;
+    .offer-empty img {
+      width: min(54%, 210px);
+      height: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 14px 26px rgba(47, 91, 234, .16));
     }
 
-    .nav {
+    .offer-dots {
+      position: absolute;
+      inset-inline: 0;
+      bottom: 12px;
       display: flex;
-      align-items: center;
       justify-content: center;
-      gap: 14px;
-      margin-inline-start: auto;
-      margin-inline-end: 4px;
+      gap: 7px;
     }
 
-    .nav a {
-      color: var(--muted);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 700;
-      white-space: nowrap;
+    .offer-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      border: 0;
+      background: rgba(255, 255, 255, .66);
+      padding: 0;
     }
 
-    .nav a:hover { color: var(--primary); }
+    .offer-dot.active { background: var(--blue); }
 
-    .content {
+    .result-tiles {
+      margin-top: 76px;
       display: grid;
-      gap: 24px;
-      align-content: start;
-    }
-
-    .hero {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
-      align-items: center;
-      padding: 22px 0 18px;
-    }
-
-    .hero-copy {
-      animation: fadeUp .7s ease both;
-    }
-
-    .hero-copy h1 {
-      margin: 0 0 12px;
-      font-size: 26px;
-      line-height: 1.12;
-      font-weight: 800;
-      letter-spacing: 0;
-    }
-
-    .hero-copy p {
-      margin: 0 0 22px;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.7;
-      max-width: 420px;
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
     }
 
-    .primary-action,
-    .secondary-action {
-      display: inline-flex;
+    .result-tile {
+      aspect-ratio: 1 / 1;
+      border: 0;
+      border-radius: 18px;
+      background: var(--blue-dark);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 46px;
-      padding: 0 18px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 800;
-      text-decoration: none;
+      gap: 12px;
+      padding: 10px;
+      cursor: pointer;
+      box-shadow: 0 16px 32px rgba(36, 87, 214, .22);
+      transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
     }
 
-    .primary-action {
-      background: var(--primary);
+    .result-tile:hover,
+    .result-tile:focus-visible,
+    .result-tile.active {
+      transform: translateY(-3px);
+      background: #1f4cc5;
+      box-shadow: 0 20px 38px rgba(36, 87, 214, .30);
+      outline: none;
+    }
+
+    .tile-icon svg {
+      width: 38px;
+      height: 38px;
+    }
+
+    .result-tile span {
+      max-width: 100%;
       color: #fff;
-      box-shadow: 0 16px 34px rgba(47, 94, 234, .25);
-      transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+      text-align: center;
+      font-size: 22px;
+      line-height: 1.18;
+      font-weight: 900;
     }
 
-    .secondary-action {
+    .search-card,
+    .text-section,
+    .result-card,
+    .message-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
       background: #fff;
-      color: var(--primary);
-      border: 1px solid var(--line);
-      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
-    }
-
-    .primary-action:hover,
-    .secondary-action:hover {
-      transform: translateY(-2px);
-    }
-
-    .primary-action:hover {
-      background: var(--primary-dark);
-      box-shadow: 0 20px 42px rgba(47, 94, 234, .32);
-    }
-
-    .secondary-action:hover {
-      border-color: rgba(47, 94, 234, .35);
-      box-shadow: 0 14px 28px rgba(31, 50, 100, .09);
-    }
-
-    .hero-panel {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 16px;
       box-shadow: var(--shadow);
-      animation: fadeUp .7s ease .12s both;
-      transition: transform .25s ease, box-shadow .25s ease;
     }
 
-    .hero-panel:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 28px 70px rgba(31, 50, 100, .16);
+    .search-card {
+      display: none;
+      margin-top: 22px;
+      padding: 18px;
     }
 
-    .hero-panel img {
-      width: min(260px, 100%);
-      margin: 0 auto;
-      aspect-ratio: 1 / 1;
-      object-fit: contain;
-      display: block;
-      filter: drop-shadow(0 14px 22px rgba(40, 76, 180, .14));
-      animation: floatLogo 4s ease-in-out infinite;
+    .search-card.active { display: block; }
+
+    .search-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      color: var(--ink);
+      font-size: 22px;
+      font-weight: 900;
     }
 
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
+    .search-title svg {
+      width: 28px;
+      height: 28px;
+      color: var(--blue);
+    }
+
+    .field {
+      position: relative;
       margin-top: 12px;
     }
 
-    .stat {
-      min-height: 58px;
-      padding: 9px;
-      border-radius: 8px;
-      background: #f7f9ff;
-      border: 1px solid var(--line);
-      transition: transform .2s ease, background .2s ease;
-    }
-
-    .stat:hover {
-      transform: translateY(-2px);
+    .field input,
+    .field select {
+      width: 100%;
+      min-height: 56px;
+      padding: 0 54px 0 16px;
+      border: 2px solid #45534f;
+      border-radius: 12px;
       background: #fff;
+      color: var(--ink);
+      font: 800 18px "Tajawal", system-ui, sans-serif;
+      outline: none;
     }
 
-    .stat b {
-      display: block;
-      color: var(--primary);
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 4px rgba(15, 138, 120, .10);
+    }
+
+    .field-icon {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #45534f;
+      pointer-events: none;
+    }
+
+    .field-icon svg {
+      width: 26px;
+      height: 26px;
+    }
+
+    .search-button,
+    .contact-button {
+      width: 100%;
+      min-height: 56px;
+      border: 0;
+      border-radius: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #fff;
+      text-decoration: none;
+      cursor: pointer;
+      font: 900 20px "Tajawal", system-ui, sans-serif;
+    }
+
+    .search-button {
+      margin-top: 16px;
+      background: var(--green);
+    }
+
+    .search-button:disabled {
+      cursor: wait;
+      opacity: .72;
+    }
+
+    .contact-button {
+      margin-top: 72px;
+      background: var(--blue-dark);
+    }
+
+    .text-section {
+      display: none;
+      margin-top: 34px;
+      padding: 18px;
+      background: #f8fbff;
+    }
+
+    .text-section.active { display: block; }
+
+    .text-section h2 {
+      margin: 0 0 8px;
+      color: var(--blue-dark);
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .text-section p {
+      margin: 0;
+      color: #334155;
       font-size: 16px;
-      line-height: 1.1;
+      line-height: 1.65;
+      font-weight: 700;
+      white-space: pre-line;
     }
 
-    .stat span {
-      display: block;
-      margin-top: 5px;
+    .results-list {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .message-card {
+      padding: 18px;
       color: var(--muted);
-      font-size: 11px;
-      line-height: 1.3;
-    }
-
-    .courses-section {
-      padding: 4px 0 30px;
-      animation: fadeUp .7s ease .22s both;
-    }
-
-    .free-pdf-section {
-      padding: 0 0 30px;
-      animation: fadeUp .7s ease .28s both;
-    }
-
-    .section-title {
-      margin: 0 0 14px;
-      font-size: 24px;
-      line-height: 1.2;
+      text-align: center;
       font-weight: 800;
     }
 
-    .course-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .course-card {
-      min-height: 108px;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-      box-shadow: 0 10px 28px rgba(31, 50, 100, .07);
-      opacity: 0;
-      transform: translateY(16px);
-      transition: opacity .45s ease, transform .45s ease, border-color .2s ease, box-shadow .2s ease;
-    }
-
-    .course-card.is-visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .course-card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(47, 94, 234, .28);
-      box-shadow: 0 18px 42px rgba(31, 50, 100, .12);
-    }
-
-    .course-card b {
-      display: block;
-      color: var(--primary);
-      font-size: 20px;
-      line-height: 1.1;
-      direction: ltr;
+    .message-card.success {
+      border-color: #b7ebcd;
+      background: #edfff4;
+      color: #11814f;
       text-align: right;
     }
 
-    .course-card span {
-      display: block;
-      margin-top: 9px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.45;
+    .message-card.error {
+      border-color: #fecaca;
+      background: #fff1f2;
+      color: #b91c1c;
     }
 
-    .pdf-course,
-    .pdf-subject,
-    .pdf-item {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
+    .result-card {
+      padding: 18px;
     }
 
-    .pdf-course {
-      padding: 12px;
-      margin-bottom: 12px;
-      box-shadow: 0 10px 28px rgba(31, 50, 100, .07);
+    .result-card h3 {
+      margin: 0 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      color: #1e429f;
+      font-size: 22px;
+      font-weight: 900;
     }
 
-    .pdf-course h3,
-    .pdf-subject h4,
-    .pdf-item h5 {
-      margin: 0;
-      line-height: 1.25;
+    .result-row {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 12px;
+      padding: 13px 0;
+      border-bottom: 1px solid #e5e7eb;
+      align-items: start;
     }
 
-    .pdf-course h3 {
+    .result-row:last-child { border-bottom: 0; }
+
+    .result-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #586478;
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .row-icon svg {
+      width: 22px;
+      height: 22px;
+      color: var(--blue);
+    }
+
+    .result-value {
+      direction: auto;
+      color: var(--ink);
       font-size: 18px;
-      color: var(--primary);
-    }
-
-    .pdf-subject {
-      margin-top: 10px;
-      padding: 10px;
-      background: #fbfcff;
-    }
-
-    .pdf-subject h4 {
-      font-size: 15px;
-      margin-bottom: 8px;
-    }
-
-    .pdf-item {
-      margin-top: 8px;
-      padding: 10px;
-    }
-
-    .pdf-item h5 {
-      font-size: 14px;
-      margin-bottom: 8px;
-    }
-
-    .pdf-frame {
-      width: 100%;
-      height: 300px;
-      border: 0;
-      border-radius: 8px;
-      background: #eef2fb;
-      display: block;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+      text-align: left;
     }
 
     .footer {
-      padding: 14px 0 18px;
-      border-top: 1px solid rgba(230, 235, 246, .9);
+      margin-top: 16px;
       color: var(--muted);
-      font-size: 13px;
-      line-height: 1.5;
       text-align: center;
+      font-size: 14px;
+      font-weight: 900;
       direction: ltr;
     }
 
     .footer-links {
+      margin-top: 18px;
       display: flex;
-      flex-wrap: wrap;
       justify-content: center;
-      gap: 10px;
-      margin-bottom: 6px;
+      gap: 22px;
+      color: var(--blue);
       direction: rtl;
     }
 
     .footer-links a {
-      color: var(--muted);
       text-decoration: none;
-      font-weight: 700;
+      font-weight: 900;
     }
 
-    .footer-links a:hover { color: var(--primary); }
+    .hidden { display: none !important; }
 
-    .whatsapp-float {
-      position: fixed;
-      right: 18px;
-      bottom: 18px;
-      z-index: 20;
-      width: 54px;
-      height: 54px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: #25D366;
-      color: #fff;
-      text-decoration: none;
-      box-shadow: 0 14px 32px rgba(37, 211, 102, .32);
-      transition: transform .2s ease, box-shadow .2s ease;
-    }
-
-    .whatsapp-float:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 18px 40px rgba(37, 211, 102, .42);
-    }
-
-    .whatsapp-float svg {
-      width: 28px;
-      height: 28px;
-      display: block;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *,
-      *::before,
-      *::after {
-        animation-duration: .01ms !important;
-        animation-iteration-count: 1 !important;
-        scroll-behavior: auto !important;
-        transition-duration: .01ms !important;
-      }
-
-      .course-card {
-        opacity: 1;
-        transform: none;
-      }
-    }
-
-    @media (max-width: 760px) {
-      .site { width: min(100% - 24px, 320px); }
-      .header { min-height: 58px; }
-      .logo strong { font-size: 20px; }
-      .social-link { width: 36px; height: 36px; }
-      .social-link svg { width: 19px; height: 19px; }
-      .store-link.apple svg { width: 18px; height: 18px; }
-      .nav {
-        order: 3;
-        width: 100%;
-        justify-content: space-between;
-        gap: 8px;
-        margin: 0 0 8px;
-      }
-      .nav a { font-size: 12px; }
-      .header {
-        flex-wrap: wrap;
-        flex-direction: row-reverse;
-        padding-top: 8px;
-      }
-      .hero {
+    @media (max-width: 420px) {
+      .page { width: min(100% - 22px, 390px); }
+      .brand span { display: none; }
+      .results-header h1 { font-size: 25px; }
+      .results-header p { font-size: 14px; }
+      .result-tiles { gap: 10px; }
+      .result-tile { border-radius: 16px; }
+      .tile-icon svg { width: 34px; height: 34px; }
+      .result-tile span { font-size: 19px; }
+      .result-row {
         grid-template-columns: 1fr;
-        gap: 16px;
-        padding: 22px 0 18px;
+        gap: 7px;
       }
-      .hero-copy h1 { font-size: 23px; }
-      .hero-copy p { font-size: 13px; margin-bottom: 14px; }
-      .actions { display: grid; grid-template-columns: 1fr; }
-      .hero-panel { padding: 12px; }
-      .hero-panel img {
-        width: min(170px, 72%);
-        margin: 0 auto;
-      }
-      .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .section-title { font-size: 21px; }
-      .course-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .course-card { min-height: 96px; padding: 12px; }
-      .footer { font-size: 12px; padding: 12px 0 14px; }
-    }
-
-    @media (max-width: 380px) {
-      .site { width: min(100% - 18px, 300px); }
-      .logo strong { font-size: 18px; }
-      .social-link { width: 34px; height: 34px; }
-      .social-links { gap: 6px; }
-      .nav a { font-size: 11px; }
-      .hero-copy h1 { font-size: 21px; }
-      .primary-action,
-      .secondary-action {
-        min-height: 42px;
-        font-size: 13px;
-      }
-      .stat {
-        min-height: 52px;
-        padding: 7px;
-      }
-      .stat b { font-size: 14px; }
-      .stat span { font-size: 10px; }
-      .course-grid { gap: 8px; }
-      .course-card b { font-size: 17px; }
-      .course-card span { font-size: 11px; }
-      .footer {
-        font-size: 11px;
-        overflow-wrap: anywhere;
-      }
-      .whatsapp-float {
-        right: 12px;
-        bottom: 12px;
-        width: 48px;
-        height: 48px;
-      }
-      .whatsapp-float svg {
-        width: 24px;
-        height: 24px;
-      }
+      .result-value { text-align: right; }
     }
   </style>
 </head>
 <body>
-  <div class="site">
-    <header class="header">
-      <a class="logo" href="{{ url_for('home') }}" aria-label="Epsilon Education">
-        <strong>epsilon education</strong>
+  <main class="page">
+    <nav class="topbar" aria-label="روابط الموقع">
+      <a class="brand" href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='epsilon.svg') }}" alt="">
+        <span>epsilon education</span>
       </a>
-    
-      <div class="social-links" aria-label="روابط التواصل">
-        <a class="social-link store-link apple" href="https://apps.apple.com/tr/app/epsilon-education/id6766522206" aria-label="App Store">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#111111" d="M18.7 12.8c0-3 2.5-4.4 2.6-4.5-1.4-2-3.5-2.3-4.2-2.4-1.8-.2-3.5 1-4.4 1-.9 0-2.2-1-3.7-1-1.9 0-3.7 1.1-4.7 2.9-2 3.5-.5 8.6 1.4 11.4.9 1.4 2.1 3 3.6 2.9 1.4-.1 2-.9 3.7-.9s2.2.9 3.8.9c1.6 0 2.6-1.4 3.5-2.8 1.1-1.6 1.5-3.1 1.6-3.2 0-.1-3.1-1.3-3.2-4.3ZM15.9 4c.8-1 1.3-2.3 1.1-3.6-1.1 0-2.5.8-3.3 1.7-.7.8-1.4 2.2-1.2 3.5 1.3.1 2.6-.6 3.4-1.6Z"/>
-          </svg>
-        </a>
-        <a class="social-link store-link google-play" href="https://drive.google.com/file/d/146Mj9XSCg8niOlYDyO7k75Lg6HHD4-a6/view?usp=sharing" aria-label="Google Play">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#34A853" d="M3.4 1.4c-.3.3-.4.8-.4 1.4v18.4c0 .6.2 1 .5 1.4l10-10.6-10.1-10.6Z"/>
-            <path fill="#FBBC04" d="m16.7 8.6-3.2 3.4 3.2 3.4 4.3-2.5c1.3-.7 1.3-1.9 0-2.7l-4.3-1.6Z"/>
-            <path fill="#4285F4" d="M3.5 1.4 13.5 12l3.2-3.4L5.5 2.1c-.8-.5-1.5-.7-2-.7Z"/>
-            <path fill="#EA4335" d="M3.5 22.6c.5 0 1.2-.2 2-.7l11.2-6.5-3.2-3.4-10 10.6Z"/>
-          </svg>
-        </a>
-        <a class="social-link" href="https://www.facebook.com/profile.php?id=61578209885150" aria-label="Facebook">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.414c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.97H15.83c-1.49 0-1.955.93-1.955 1.885v2.265h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
-          </svg>
-        </a>
-        <a class="social-link" href="https://www.tiktok.com/@epsilon20254?_r=1&_t=ZS-963EAe1zcS8" aria-label="TikTok">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#111111" d="M16.6 1.7c.4 3 2.1 4.8 5 5v3.4c-1.8.1-3.4-.4-5-1.5v6.3c0 5.2-5.6 8.5-10.1 5.9-4.3-2.5-4.1-8.9.4-11.1 1-.5 2-.7 3.3-.6v3.6c-.4-.1-.7-.1-1.1 0-2.1.3-3.1 2.8-1.8 4.4 1.4 1.7 4.1.9 4.5-1.4.1-.4.1-.8.1-1.2V1.7h4.7z"/>
-          </svg>
-        </a>
-        <a class="social-link" href="https://youtube.com/@epsiloneducation-t5j?si=b7EdBOYsiUJI3xZ4" aria-label="YouTube">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#FF0000" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31.2 31.2 0 0 0 0 12a31.2 31.2 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31.2 31.2 0 0 0 24 12a31.2 31.2 0 0 0-.5-5.8ZM9.6 15.6V8.4L15.8 12l-6.2 3.6Z"/>
-          </svg>
-        </a>
+      <div class="top-actions">
+        <a class="top-link" href="{{ url_for('login') }}">تسجيل الدخول</a>
+        <a class="top-link" href="{{ url_for('register') }}">إنشاء حساب</a>
       </div>
-    </header>
+    </nav>
 
-    <main class="content">
-      <section class="hero">
-        <div class="hero-copy">
-          <h1>تعلم بذكاء مع Epsilon Education</h1>
-          <p>منصة تعليمية تجمع الدروس، التمارين، والملفات في مكان واحد حتى يدرس الطالب بطريقة منظمة وواضحة.</p>
-          <div class="actions">
-            <a class="primary-action" href="{{ url_for('register') }}">إنشاء حساب</a>
-            <a class="secondary-action" href="{{ url_for('login') }}">تسجيل الدخول   </a>
-            <a class="secondary-action" href="{{ url_for('archive') }}">ARCHIVE</a>
-          </div>
-        </div>
+    <section class="results-header" aria-labelledby="results-title">
+      <span class="header-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M8 7h8M8 12h5M8 17h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="2.2"/>
+          <path d="m15.5 12.5 1.5 1.5 3-3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <div>
+        <h1 id="results-title">صفحة النتائج</h1>
+        <p>اختر نوع المسابقة للاطلاع على النتائج</p>
+      </div>
+    </section>
 
-        <div class="hero-panel" aria-label="Epsilon">
+    <section class="offers" aria-label="العروض">
+      <div class="offer-stage" id="offerStage">
+        <div class="offer-empty">
           <img src="{{ url_for('static', filename='epsilon.svg') }}" alt="Epsilon Education">
-          <div class="stats">
-            <div class="stat">
-              <b>دروس</b>
-              <span>مرتبة حسب المستوى</span>
-            </div>
-            <div class="stat">
-              <b>ملفات</b>
-              <span>PDF وفيديوهات</span>
-            </div>
-            <div class="stat">
-              <b>متابعة</b>
-              <span>حساب لكل طالب</span>
-            </div>
-          </div>
         </div>
-      </section>
-
-      <section class="courses-section" aria-labelledby="courses-title">
-        <h2 class="section-title" id="courses-title">دوراتنا</h2>
-        <div class="course-grid">
-          <article class="course-card">
-            <b>MPI</b>
-            <span>الرياضيات ، الفيزياء،   المعلوماتية.</span>
-          </article>
-          <article class="course-card">
-            <b>PC</b>
-            <span>دروس الفيزياء والكيمياء بطريقة مبسطة.</span>
-          </article>
-          <article class="course-card">
-            <b>BG</b>
-            <span>علوم الحياة والأرض مع ملخصات للمراجعة.</span>
-          </article>
-          <article class="course-card">
-            <b>BAC</b>
-            <span>تحضير ومراجعة لامتحان الباكالوريا.</span>
-          </article>
-        </div>
-      </section>
-
-      {% if free_pdfs %}
-        <section class="free-pdf-section" aria-labelledby="free-pdfs-title">
-          <h2 class="section-title" id="free-pdfs-title">PDF مجانية</h2>
-          {% for course in free_pdfs %}
-            <article class="pdf-course">
-              <h3>{{ course.title }}</h3>
-              {% for subject in course.subjects %}
-                <section class="pdf-subject">
-                  <h4>{{ subject.name }}</h4>
-                  {% for pdf in subject.pdfs %}
-                    <article class="pdf-item">
-                      <h5>{{ pdf.title }}</h5>
-                      <iframe class="pdf-frame"
-                        src="{{ pdf.preview_url }}"
-                        loading="lazy"
-                        referrerpolicy="no-referrer"
-                        oncontextmenu="return false">
-                      </iframe>
-                    </article>
-                  {% endfor %}
-                </section>
-              {% endfor %}
-            </article>
-          {% endfor %}
-        </section>
-      {% endif %}
-    </main>
-
-    <footer class="footer">
-      <div class="footer-links">
-        <a href="{{ url_for('about') }}">من نحن</a>
-        <a href="{{ url_for('privacy') }}">سياسة الخصوصية</a>
-        <a href="{{ url_for('contact') }}">تواصل معنا</a>
       </div>
-      epsilon @2026 | <a href="https://www.facebook.com/share/1QDQ2hgs5a/?mibextid=wwXIfr">dev.medsaidmohameden</a>
-    </footer>
-  </div>
+    </section>
 
-  <a class="whatsapp-float" href="https://wa.me/22232205264" target="_blank" rel="noopener" aria-label="WhatsApp">
-    <svg viewBox="0 0 32 32" aria-hidden="true">
-      <path fill="currentColor" d="M16.02 3.2A12.64 12.64 0 0 0 5.18 22.35L3.5 28.5l6.3-1.65A12.58 12.58 0 0 0 16.02 28.4h.01A12.6 12.6 0 0 0 16.02 3.2Zm0 22.98h-.01a10.45 10.45 0 0 1-5.33-1.46l-.38-.22-3.74.98 1-3.64-.25-.37a10.42 10.42 0 1 1 8.71 4.71Zm5.72-7.82c-.31-.16-1.85-.91-2.14-1.02-.29-.1-.5-.16-.7.16-.21.31-.81 1.02-.99 1.23-.18.21-.36.23-.68.08-.31-.16-1.32-.49-2.52-1.55-.93-.83-1.56-1.86-1.74-2.17-.18-.31-.02-.48.14-.64.14-.14.31-.36.47-.54.16-.18.21-.31.31-.52.1-.21.05-.39-.03-.54-.08-.16-.7-1.7-.97-2.33-.25-.61-.51-.52-.7-.53h-.6c-.21 0-.54.08-.83.39-.29.31-1.1 1.08-1.1 2.63 0 1.55 1.13 3.05 1.29 3.26.16.21 2.23 3.4 5.39 4.77.75.32 1.34.52 1.8.66.76.24 1.45.21 1.99.13.61-.09 1.85-.76 2.11-1.49.26-.73.26-1.36.18-1.49-.08-.13-.29-.21-.6-.37Z"/>
-    </svg>
-  </a>
+    <section class="result-tiles" aria-label="أنواع النتائج">
+      <button class="result-tile" type="button" data-exam="bac-first" data-title="نتائج الباكالوريا الدورة الأولى">
+        <span class="tile-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M7 4h10v6a5 5 0 0 1-10 0V4Z" stroke="currentColor" stroke-width="2.2"/>
+            <path d="M7 7H4v2a3 3 0 0 0 3 3M17 7h3v2a3 3 0 0 1-3 3M12 15v4M9 20h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span>الباكالوريا<br>الدورة الأولى</span>
+      </button>
+      <button class="result-tile" type="button" data-exam="brevet" data-title="نتائج ابريفة">
+        <span class="tile-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M5 5.5A3.5 3.5 0 0 1 8.5 2H20v17H8.5A3.5 3.5 0 0 0 5 22V5.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M5 5.5A3.5 3.5 0 0 0 1.5 2H4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M9 6h7M9 10h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span>ابريفة</span>
+      </button>
+      <button class="result-tile" type="button" data-exam="concours" data-title="نتائج كونكور">
+        <span class="tile-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="m2 9 10-5 10 5-10 5L2 9Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M6 11.5V16c2.7 2 9.3 2 12 0v-4.5" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M22 9v6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span>كونكور</span>
+      </button>
+    </section>
+
+    <section class="search-card" id="searchCard" aria-live="polite">
+      <div class="search-title">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2.4"/>
+        </svg>
+        <span id="searchTitle">البحث عن نتيجة</span>
+      </div>
+
+      <div class="field hidden" id="centerField">
+        <span class="field-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M3 21h18M5 21V9h14v12M4 9l8-5 8 5M9 13h6M9 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <select id="centerSelect">
+          <option value="">مركز الامتحان</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <span class="field-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M7 7h10M7 12h10M7 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2.2"/>
+          </svg>
+        </span>
+        <input id="queryInput" type="search" inputmode="search" autocomplete="off" placeholder="رقم المترشح أو الاسم الكامل">
+      </div>
+
+      <button class="search-button" id="searchButton" type="button">
+        <span>بحث</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2.4"/>
+        </svg>
+      </button>
+    </section>
+
+    <div class="results-list" id="resultsList"></div>
+
+    <section class="text-section" id="textSection"></section>
+
+    <a class="contact-button" href="{{ url_for('contact') }}">
+      <span>طلب التواصل</span>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M5 12a7 7 0 0 1 14 0v4a2 2 0 0 1-2 2h-2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M9 18h3a2 2 0 0 0 2-2v-1h-3a2 2 0 0 0-2 2v1Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+      </svg>
+    </a>
+
+    <div class="footer">epsilon | dev. med said mohameden</div>
+    <div class="footer-links">
+      <a href="{{ url_for('about') }}">من نحن</a>
+      <a href="{{ url_for('privacy') }}">سياسة الخصوصية</a>
+      <a href="{{ url_for('contact') }}">تواصل معنا</a>
+    </div>
+  </main>
 
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const cards = document.querySelectorAll('.course-card');
+    const state = {
+      exam: '',
+      title: '',
+      offers: [],
+      offerIndex: 0,
+      offerTimer: null,
+      centersLoaded: false,
+    };
 
-      if (!('IntersectionObserver' in window)) {
-        cards.forEach(card => card.classList.add('is-visible'));
+    const labels = {
+      fullName: 'الاسم الكامل',
+      candidateNumber: 'رقم المترشح',
+      birthPlace: 'مكان الميلاد',
+      birthDate: 'تاريخ الميلاد',
+      centerName: 'مركز الامتحان',
+      wilaya: 'الولاية',
+      moughataa: 'المقاطعة',
+      score: 'المعدل',
+      decision: 'القرار',
+      rank: 'الترتيب',
+    };
+
+    const iconSvg = {
+      fullName: '<path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+      candidateNumber: '<path d="M4 7h16M4 17h16M8 4l-2 16M18 4l-2 16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+      centerName: '<path d="M3 21h18M5 21V9h14v12M4 9l8-5 8 5M9 13h6M9 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+      wilaya: '<path d="M12 21s7-5.1 7-11a7 7 0 1 0-14 0c0 5.9 7 11 7 11Z" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="2.2"/>',
+      score: '<path d="M4 17 9 12l4 4 7-9M4 21h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+      decision: '<path d="M7 3h10l3 3v15H4V3h3Z" stroke="currentColor" stroke-width="2.2"/><path d="m8 13 2.5 2.5L16 10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+      default: '<path d="M7 7h10M7 12h10M7 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+    };
+
+    const tiles = document.querySelectorAll('.result-tile');
+    const searchCard = document.getElementById('searchCard');
+    const searchTitle = document.getElementById('searchTitle');
+    const centerField = document.getElementById('centerField');
+    const centerSelect = document.getElementById('centerSelect');
+    const queryInput = document.getElementById('queryInput');
+    const searchButton = document.getElementById('searchButton');
+    const resultsList = document.getElementById('resultsList');
+    const offerStage = document.getElementById('offerStage');
+    const textSection = document.getElementById('textSection');
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function rowIcon(key) {
+      return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${iconSvg[key] || iconSvg.default}</svg>`;
+    }
+
+    function selectExam(exam, title) {
+      state.exam = exam;
+      state.title = title;
+      tiles.forEach((tile) => tile.classList.toggle('active', tile.dataset.exam === exam));
+      searchTitle.textContent = title;
+      searchCard.classList.add('active');
+      resultsList.innerHTML = '';
+      queryInput.value = '';
+      queryInput.focus();
+      centerField.classList.toggle('hidden', exam !== 'concours');
+      if (exam === 'concours') loadCenters();
+      searchCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function loadCenters() {
+      if (state.centersLoaded) return;
+      centerSelect.innerHTML = '<option value="">جاري تحميل المراكز...</option>';
+      try {
+        const response = await fetch('/api/results/concours/centers');
+        const data = await response.json();
+        const centers = data.centers || [];
+        centerSelect.innerHTML = '<option value="">مركز الامتحان</option>' +
+          centers.map((center) => `<option value="${escapeHtml(center)}">${escapeHtml(center)}</option>`).join('');
+        state.centersLoaded = true;
+      } catch (error) {
+        centerSelect.innerHTML = '<option value="">تعذر تحميل المراكز</option>';
+      }
+    }
+
+    function resultRows(result) {
+      const keys = ['fullName', 'candidateNumber'];
+      if (result.birthPlace) keys.push('birthPlace');
+      if (result.birthDate) keys.push('birthDate');
+      if (result.centerName) keys.push('centerName');
+      if (result.wilaya) keys.push('wilaya');
+      if (result.moughataa) keys.push('moughataa');
+      if (result.score) keys.push('score');
+      if (result.decision) keys.push('decision');
+      if (result.rank) keys.push('rank');
+
+      return keys
+        .filter((key) => result[key] !== undefined && result[key] !== null && String(result[key]).trim() !== '')
+        .map((key) => `
+          <div class="result-row">
+            <div class="result-label">
+              <span class="row-icon">${rowIcon(key)}</span>
+              <span>${labels[key]}</span>
+            </div>
+            <div class="result-value">${escapeHtml(result[key])}</div>
+          </div>
+        `)
+        .join('');
+    }
+
+    function isSuccess(result) {
+      if (result.examType === 'concours') {
+        const score = Number(String(result.score || '').replace(',', '.'));
+        return Number.isFinite(score) && score >= 100;
+      }
+      return String(result.decision || '').toLowerCase().includes('admis');
+    }
+
+    function renderResults(results) {
+      if (!results.length) {
+        resultsList.innerHTML = '<div class="message-card">لم يتم العثور على نتيجة مطابقة.</div>';
         return;
       }
 
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
-            observer.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.18 });
+      resultsList.innerHTML = results.map((result) => {
+        const success = isSuccess(result);
+        return `
+          ${success ? '<div class="message-card success"><strong>مبروك! لقد نجحت</strong><br>نتمنى لك مستقبلا موفقا ومشرقا</div>' : ''}
+          <article class="result-card">
+            <h3>
+              <span class="row-icon">${rowIcon('candidateNumber')}</span>
+              <span>بيانات المترشح</span>
+            </h3>
+            ${resultRows(result)}
+          </article>
+        `;
+      }).join('');
+    }
 
-      cards.forEach((card, index) => {
-        card.style.transitionDelay = `${index * 70}ms`;
-        observer.observe(card);
-      });
+    async function runSearch() {
+      if (!state.exam) {
+        resultsList.innerHTML = '<div class="message-card">اختر نوع المسابقة أولا.</div>';
+        return;
+      }
+      const query = queryInput.value.trim();
+      const center = centerSelect.value.trim();
+      if (state.exam === 'concours' && !center) {
+        resultsList.innerHTML = '<div class="message-card error">اختر مركز الامتحان أولا.</div>';
+        return;
+      }
+      if (!query) {
+        resultsList.innerHTML = '<div class="message-card error">اكتب رقم المترشح أو الاسم الكامل.</div>';
+        return;
+      }
+
+      searchButton.disabled = true;
+      searchButton.querySelector('span').textContent = 'جاري البحث...';
+      try {
+        const params = new URLSearchParams({ q: query });
+        if (state.exam === 'concours') params.set('center', center);
+        const response = await fetch(`/api/results/${state.exam}?${params.toString()}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'تعذر البحث');
+        renderResults(data.results || []);
+      } catch (error) {
+        resultsList.innerHTML = `<div class="message-card error">${escapeHtml(error.message || 'حدث خطأ أثناء البحث.')}</div>`;
+      } finally {
+        searchButton.disabled = false;
+        searchButton.querySelector('span').textContent = 'بحث';
+      }
+    }
+
+    function renderOffer() {
+      clearTimeout(state.offerTimer);
+      if (!state.offers.length) return;
+      const offer = state.offers[state.offerIndex];
+      offerStage.innerHTML = `
+        <img src="${escapeHtml(offer.imageUrl)}" alt="${escapeHtml(offer.title || 'عرض')}">
+        ${state.offers.length > 1 ? `
+          <div class="offer-dots">
+            ${state.offers.map((_, index) => `<button class="offer-dot ${index === state.offerIndex ? 'active' : ''}" type="button" aria-label="عرض ${index + 1}"></button>`).join('')}
+          </div>
+        ` : ''}
+      `;
+      if (state.offers.length > 1) {
+        const duration = Math.max(1, Number(offer.durationSeconds || 5));
+        state.offerTimer = setTimeout(() => {
+          state.offerIndex = (state.offerIndex + 1) % state.offers.length;
+          renderOffer();
+        }, duration * 1000);
+      }
+    }
+
+    async function loadOffers() {
+      try {
+        const response = await fetch('/api/offers');
+        const data = await response.json();
+        state.offers = (data.offers || []).filter((offer) => offer.imageUrl);
+        if (state.offers.length) renderOffer();
+
+        const text = data.textSection || {};
+        if (text.active && (text.title || text.body)) {
+          textSection.classList.add('active');
+          textSection.innerHTML = `
+            ${text.title ? `<h2>${escapeHtml(text.title)}</h2>` : ''}
+            ${text.body ? `<p>${escapeHtml(text.body)}</p>` : ''}
+          `;
+        }
+      } catch (_) {
+        state.offers = [];
+      }
+    }
+
+    tiles.forEach((tile) => {
+      tile.addEventListener('click', () => selectExam(tile.dataset.exam, tile.dataset.title));
     });
+    searchButton.addEventListener('click', runSearch);
+    queryInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') runSearch();
+    });
+
+    loadOffers();
   </script>
 </body>
 </html>
