@@ -2186,12 +2186,15 @@ def normalize_concours_name_query(value):
     text = normalize_excel_text(value)
     return re.sub(r"[\s/ـ]+", "", text)
 
-def search_concours_by_name(cur, query, limit=20):
+def search_concours_by_name(cur, query, center_name=None, limit=20):
     normalized_query = normalize_concours_name_query(query)
+    center_clause = "AND center_name = %s" if center_name else ""
+    center_params = [center_name] if center_name else []
     cur.execute("""
         SELECT *
         FROM national_exam_results
         WHERE exam_type='concours'
+          {center_clause}
           AND (
               full_name ILIKE %s
               OR regexp_replace(lower(full_name), '[[:space:]/ـ]+', '', 'g') ILIKE %s
@@ -2207,7 +2210,8 @@ def search_concours_by_name(cur, query, limit=20):
           length(full_name) ASC,
           full_name ASC
         LIMIT %s
-    """, (
+    """.format(center_clause=center_clause), (
+        *center_params,
         f"%{query}%",
         f"%{normalized_query}%",
         query,
@@ -2755,11 +2759,32 @@ def api_archive_files():
                 })
     return jsonify({"items": items})
 
+@app.get("/api/results/<exam_type>/centers")
+def api_result_centers(exam_type):
+    if exam_type != "concours":
+        return jsonify({"centers": []})
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT DISTINCT center_name
+            FROM national_exam_results
+            WHERE exam_type=%s
+              AND center_name IS NOT NULL
+              AND btrim(center_name) <> ''
+            ORDER BY center_name ASC
+        """, (exam_type,))
+        centers = [row[0] for row in cur.fetchall()]
+        cur.close()
+    return jsonify({"centers": centers})
+
 @app.get("/api/results/<exam_type>")
 def api_search_results(exam_type):
     if exam_type not in RESULT_EXAM_TYPES:
         return api_error("Unknown exam type.", 404, "unknown_exam_type")
     query = (request.args.get("q") or "").strip()
+    center = (request.args.get("center") or "").strip()
+    if exam_type == "concours" and not center:
+        return api_error("Centre examen is required for concours search.", 400, "missing_center")
     if not query.isdigit() and len(query) < 2:
         return jsonify({"results": []})
 
@@ -2772,10 +2797,11 @@ def api_search_results(exam_type):
                     SELECT *
                     FROM national_exam_results
                     WHERE exam_type=%s
+                      AND center_name=%s
                       AND {concours_number_match_sql()}
                     ORDER BY id ASC
                     LIMIT 1
-                """, (exam_type, normalized_number, normalized_number))
+                """, (exam_type, center, normalized_number, normalized_number))
             else:
                 cur.execute("""
                     SELECT *
@@ -2787,7 +2813,7 @@ def api_search_results(exam_type):
                 """, (exam_type, normalized_number))
         else:
             if exam_type == "concours":
-                search_concours_by_name(cur, query)
+                search_concours_by_name(cur, query, center_name=center)
             else:
                 cur.execute("""
                     SELECT *
