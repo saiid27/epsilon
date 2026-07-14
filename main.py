@@ -1197,13 +1197,16 @@ def admin_dashboard():
                         LIMIT 1
                     """, (result_exam, normalized_number))
             else:
-                cur.execute("""
-                    SELECT *
-                    FROM national_exam_results
-                    WHERE exam_type=%s AND full_name ILIKE %s
-                    ORDER BY full_name ASC
-                    LIMIT 1
-                """, (result_exam, f"%{result_query}%"))
+                if result_exam == "concours":
+                    search_concours_by_name(cur, result_query)
+                else:
+                    cur.execute("""
+                        SELECT *
+                        FROM national_exam_results
+                        WHERE exam_type=%s AND full_name ILIKE %s
+                        ORDER BY full_name ASC
+                        LIMIT 1
+                    """, (result_exam, f"%{result_query}%"))
             result_matches = cur.fetchall()
             cur.close()
     return render_template("admin.html", users=users, courses=courses,
@@ -2179,6 +2182,41 @@ def concours_number_match_sql():
         )
     """
 
+def normalize_concours_name_query(value):
+    text = normalize_excel_text(value)
+    return re.sub(r"[\s/ـ]+", "", text)
+
+def search_concours_by_name(cur, query, limit=20):
+    normalized_query = normalize_concours_name_query(query)
+    cur.execute("""
+        SELECT *
+        FROM national_exam_results
+        WHERE exam_type='concours'
+          AND (
+              full_name ILIKE %s
+              OR regexp_replace(lower(full_name), '[[:space:]/ـ]+', '', 'g') ILIKE %s
+          )
+        ORDER BY
+          CASE
+            WHEN full_name = %s THEN 0
+            WHEN lower(full_name) = lower(%s) THEN 1
+            WHEN regexp_replace(lower(full_name), '[[:space:]/ـ]+', '', 'g') = %s THEN 2
+            WHEN full_name ILIKE %s THEN 3
+            ELSE 4
+          END,
+          length(full_name) ASC,
+          full_name ASC
+        LIMIT %s
+    """, (
+        f"%{query}%",
+        f"%{normalized_query}%",
+        query,
+        query,
+        normalized_query,
+        f"{query}%",
+        limit,
+    ))
+
 def db_text(value, max_length=None):
     text = excel_cell_text(value)
     if not text:
@@ -2748,13 +2786,16 @@ def api_search_results(exam_type):
                     LIMIT 1
                 """, (exam_type, normalized_number))
         else:
-            cur.execute("""
-                SELECT *
-                FROM national_exam_results
-                WHERE exam_type=%s AND full_name ILIKE %s
-                ORDER BY full_name ASC
-                LIMIT 1
-            """, (exam_type, f"%{query}%"))
+            if exam_type == "concours":
+                search_concours_by_name(cur, query)
+            else:
+                cur.execute("""
+                    SELECT *
+                    FROM national_exam_results
+                    WHERE exam_type=%s AND full_name ILIKE %s
+                    ORDER BY full_name ASC
+                    LIMIT 1
+                """, (exam_type, f"%{query}%"))
         rows = cur.fetchall()
         cur.close()
     return jsonify({"results": [api_result_payload(row) for row in rows]})
