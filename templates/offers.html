@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>العروض</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+  <style>
+    body { background: #f6f8ff; }
+    .page { max-width: 1100px; }
+    .offer-thumb {
+      width: 140px;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid #dbe3f6;
+      background: #eef2ff;
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark">
+  <div class="container-fluid">
+    <span class="navbar-brand">العروض</span>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-light btn-sm" href="{{ url_for('change_password') }}">تغيير كلمة المرور</a>
+      <a class="btn btn-danger btn-sm" href="{{ url_for('logout') }}">تسجيل الخروج</a>
+    </div>
+  </div>
+</nav>
+
+<main class="container page py-4">
+  {% with msgs=get_flashed_messages(with_categories=true) %}
+    {% for c,m in msgs %}
+      <div class="alert alert-{{c}}">{{m}}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="mb-3">إضافة صورة عرض</h5>
+      <form method="POST" action="{{ url_for('offers_upload') }}" enctype="multipart/form-data" class="row g-3">
+        <div class="col-12 col-md-4">
+          <label class="form-label">الصورة</label>
+          <input type="file" name="image" class="form-control" accept=".jpg,.jpeg,.png,.webp" required>
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label">العنوان اختياري</label>
+          <input name="title" class="form-control" placeholder="مثلا: عرض التسجيل">
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label">مدة العرض بالثواني</label>
+          <input type="number" name="duration_seconds" class="form-control" value="5" min="1" max="120" required>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label">الترتيب</label>
+          <input type="number" name="sort_order" class="form-control" value="0">
+        </div>
+        <div class="col-12 col-md-1 d-flex align-items-end">
+          <button class="btn btn-primary w-100">رفع</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle bg-white text-center">
+      <thead class="table-dark">
+        <tr>
+          <th>الصورة</th>
+          <th>العنوان</th>
+          <th>المدة</th>
+          <th>الترتيب</th>
+          <th>مفعل</th>
+          <th>إجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for slide in slides %}
+        <tr>
+          <td>
+            <img class="offer-thumb" src="{{ url_for('static', filename='uploads/offers/' + slide.image_file) }}" alt="">
+          </td>
+          <td colspan="4">
+            <form method="POST" action="{{ url_for('offers_update', slide_id=slide.id) }}" class="row g-2 align-items-center">
+              <div class="col-12 col-lg-4">
+                <input name="title" class="form-control" value="{{ slide.title or '' }}" placeholder="العنوان">
+              </div>
+              <div class="col-6 col-lg-2">
+                <input type="number" name="duration_seconds" class="form-control" value="{{ slide.duration_seconds }}" min="1" max="120">
+              </div>
+              <div class="col-6 col-lg-2">
+                <input type="number" name="sort_order" class="form-control" value="{{ slide.sort_order }}">
+              </div>
+              <div class="col-6 col-lg-2 form-check d-flex justify-content-center gap-2">
+                <input class="form-check-input" type="checkbox" name="active" id="active{{ slide.id }}" {% if slide.active %}checked{% endif %}>
+                <label class="form-check-label" for="active{{ slide.id }}">مفعل</label>
+              </div>
+              <div class="col-6 col-lg-2">
+                <button class="btn btn-success w-100">حفظ</button>
+              </div>
+            </form>
+          </td>
+          <td>
+            <form method="POST" action="{{ url_for('offers_delete', slide_id=slide.id) }}" onsubmit="return confirm('حذف هذا العرض؟')">
+              <button class="btn btn-danger btn-sm">حذف</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">لا توجد عروض بعد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</main>
+</body>
+</html>

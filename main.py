@@ -58,10 +58,12 @@ UP = os.path.join(BASE, "static", "uploads")
 PAY_DIR = os.path.join(UP, "payments")
 VID_DIR = os.path.join(UP, "videos")
 PDF_DIR = os.path.join(UP, "pdfs")
-for p in (PAY_DIR, VID_DIR, PDF_DIR):
+OFFERS_DIR = os.path.join(UP, "offers")
+for p in (PAY_DIR, VID_DIR, PDF_DIR, OFFERS_DIR):
     os.makedirs(p, exist_ok=True)
 
 IMG_EXT   = {"jpg","jpeg","png","webp","pdf"}  # payment proof allows pdf too
+OFFER_IMG_EXT = {"jpg", "jpeg", "png", "webp"}
 VIDEO_EXT = {"mp4","webm","mkv","avi","mov","ogg"}
 PDF_EXT   = {"pdf"}
 EXCEL_EXT = {"xlsx","xlsm"}
@@ -243,9 +245,13 @@ def verify_otp(phone: str, purpose: str, code: str) -> bool:
 # ===== Auth =====
 ADMIN_ROLES = {"admin", "developer"}
 FINANCE_ROLES = {"finance", "developer"}
+MARKETER_ROLES = {"marketer", "developer"}
 FINANCE_USERNAME = os.getenv("FINANCE_USERNAME", "finance")
 FINANCE_PHONE = os.getenv("FINANCE_PHONE", "00000000")
 FINANCE_PASSWORD = os.getenv("FINANCE_PASSWORD", "finance123")
+MARKETER_USERNAME = os.getenv("MARKETER_USERNAME", "المسوق")
+MARKETER_PHONE = os.getenv("MARKETER_PHONE", "32324816")
+MARKETER_PASSWORD = os.getenv("MARKETER_PASSWORD", "32324816")
 
 def ensure_default_finance_user(cur):
     if not (FINANCE_USERNAME and FINANCE_PHONE and FINANCE_PASSWORD):
@@ -282,6 +288,38 @@ def ensure_default_finance_user(cur):
             (username, phone, password, role, status, phone_verified, payment_status)
         VALUES (%s,%s,%s,'finance','active',TRUE,'not_applicable')
     """, (FINANCE_USERNAME, phone, hash_password(FINANCE_PASSWORD)))
+
+def ensure_default_marketer_user(cur):
+    if not (MARKETER_USERNAME and MARKETER_PHONE and MARKETER_PASSWORD):
+        return
+
+    cur.execute("SELECT id FROM users WHERE username=%s", (MARKETER_USERNAME,))
+    existing = cur.fetchone()
+    if existing:
+        cur.execute("""
+            UPDATE users
+            SET phone=%s,
+                password=%s,
+                role='marketer',
+                status='active',
+                phone_verified=TRUE,
+                payment_status='not_applicable'
+            WHERE username=%s
+        """, (MARKETER_PHONE, hash_password(MARKETER_PASSWORD), MARKETER_USERNAME))
+        return
+
+    cur.execute("""
+        INSERT INTO users
+            (username, phone, password, role, status, phone_verified, payment_status)
+        VALUES (%s,%s,%s,'marketer','active',TRUE,'not_applicable')
+        ON CONFLICT (phone) DO UPDATE
+        SET username=EXCLUDED.username,
+            password=EXCLUDED.password,
+            role='marketer',
+            status='active',
+            phone_verified=TRUE,
+            payment_status='not_applicable'
+    """, (MARKETER_USERNAME, MARKETER_PHONE, hash_password(MARKETER_PASSWORD)))
 
 def current_month_label():
     return datetime.utcnow().strftime("%Y-%m")
@@ -326,6 +364,9 @@ def developer_required(fn):
 def finance_login_required(fn):
     return login_required(FINANCE_ROLES)(fn)
 
+def marketer_login_required(fn):
+    return login_required(MARKETER_ROLES)(fn)
+
 def is_developer():
     return session.get("role") == "developer"
 
@@ -343,7 +384,7 @@ def target_is_protected(uid):
         cur.execute("SELECT role FROM users WHERE id=%s", (uid,))
         row = cur.fetchone()
         cur.close()
-    return bool(row and row[0] in {"developer", "finance"})
+    return bool(row and row[0] in {"developer", "finance", "marketer"})
 
 # ===== Routes =====
 @app.route("/")
@@ -352,6 +393,7 @@ def home():
         r = session["role"]
         return redirect(url_for("admin_dashboard" if r in ADMIN_ROLES else
                                 "finance_dashboard" if r=="finance" else
+                                "offers_dashboard" if r=="marketer" else
                                 "teacher_dashboard" if r=="teacher" else
                                 "student_dashboard"))
     return render_template("home.html", free_pdfs=fetch_free_pdfs(active_only=True))
@@ -689,6 +731,18 @@ def ensure_courses_table():
             )
         """)
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS offer_slides (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(160) NOT NULL DEFAULT '',
+                image_file VARCHAR(255) NOT NULL,
+                duration_seconds INT NOT NULL DEFAULT 5,
+                sort_order INT NOT NULL DEFAULT 0,
+                active BOOLEAN NOT NULL DEFAULT TRUE,
+                created_by INT REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS in_person_students (
                 id SERIAL PRIMARY KEY,
                 full_name VARCHAR(150) NOT NULL,
@@ -772,6 +826,10 @@ def ensure_courses_table():
             ON notifications (created_at DESC)
         """)
         cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_offer_slides_active_order
+            ON offer_slides (active, sort_order ASC, id DESC)
+        """)
+        cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_in_person_students_active
             ON in_person_students (active, created_at DESC)
         """)
@@ -814,6 +872,7 @@ def ensure_courses_table():
                         ON CONFLICT (course_code, subject) DO NOTHING
                     """, (course_code, subject, index))
         ensure_default_finance_user(cur)
+        ensure_default_marketer_user(cur)
         conn.commit()
         cur.close()
 
@@ -858,6 +917,35 @@ def save_app_settings(values):
         conn.commit()
         cur.close()
     return fetch_app_settings()
+
+def offer_slide_payload(row):
+    return {
+        "id": str(row["id"]),
+        "title": row.get("title") or "",
+        "imageUrl": url_for(
+            "static",
+            filename=f"uploads/offers/{row['image_file']}",
+            _external=True,
+        ),
+        "durationSeconds": int(row.get("duration_seconds") or 5),
+        "sortOrder": int(row.get("sort_order") or 0),
+        "active": bool(row.get("active")),
+    }
+
+def fetch_offer_slides(active_only=True):
+    ensure_courses_table()
+    with db() as conn:
+        cur = dict_cursor(conn)
+        where = "WHERE active=TRUE" if active_only else ""
+        cur.execute(f"""
+            SELECT *
+            FROM offer_slides
+            {where}
+            ORDER BY sort_order ASC, id DESC
+        """)
+        rows = cur.fetchall()
+        cur.close()
+    return rows
 
 def fetch_courses(active_only=True):
     try:
@@ -1124,6 +1212,94 @@ def reset_verify():
             flash("Code invalide ou expirÃ©.", "danger")
     return render_template("reset_verify.html", phone=phone)
 
+# ===== Offers / Marketer =====
+@app.route("/offers")
+@marketer_login_required
+def offers_dashboard():
+    slides = fetch_offer_slides(active_only=False)
+    return render_template(
+        "offers.html",
+        slides=slides,
+        is_developer=is_developer(),
+    )
+
+@app.post("/offers/upload")
+@marketer_login_required
+def offers_upload():
+    title = request.form.get("title", "").strip()
+    duration_text = request.form.get("duration_seconds", "5").strip()
+    sort_order_text = request.form.get("sort_order", "0").strip()
+    image = request.files.get("image")
+    if not image or image.filename == "":
+        flash("اختر صورة العرض.", "danger")
+        return redirect(url_for("offers_dashboard"))
+    if not allowed(image.filename, OFFER_IMG_EXT):
+        flash("الصيغ المدعومة: jpg / png / webp فقط.", "danger")
+        return redirect(url_for("offers_dashboard"))
+    try:
+        duration_seconds = max(1, min(120, int(duration_text)))
+    except ValueError:
+        duration_seconds = 5
+    try:
+        sort_order = int(sort_order_text)
+    except ValueError:
+        sort_order = 0
+
+    base = secure_filename(image.filename) or "offer.webp"
+    filename = f"offer_{int(time.time())}_{base}"
+    image.save(os.path.join(OFFERS_DIR, filename))
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO offer_slides
+                (title, image_file, duration_seconds, sort_order, active, created_by)
+            VALUES (%s,%s,%s,%s,TRUE,%s)
+        """, (title, filename, duration_seconds, sort_order, session.get("user_id")))
+        conn.commit()
+        cur.close()
+    flash("تمت إضافة العرض.", "success")
+    return redirect(url_for("offers_dashboard"))
+
+@app.post("/offers/<int:slide_id>/update")
+@marketer_login_required
+def offers_update(slide_id):
+    title = request.form.get("title", "").strip()
+    active = request.form.get("active") == "on"
+    try:
+        duration_seconds = max(1, min(120, int(request.form.get("duration_seconds", "5"))))
+    except ValueError:
+        duration_seconds = 5
+    try:
+        sort_order = int(request.form.get("sort_order", "0"))
+    except ValueError:
+        sort_order = 0
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE offer_slides
+            SET title=%s, duration_seconds=%s, sort_order=%s, active=%s
+            WHERE id=%s
+        """, (title, duration_seconds, sort_order, active, slide_id))
+        conn.commit()
+        cur.close()
+    flash("تم تحديث العرض.", "success")
+    return redirect(url_for("offers_dashboard"))
+
+@app.post("/offers/<int:slide_id>/delete")
+@marketer_login_required
+def offers_delete(slide_id):
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("SELECT image_file FROM offer_slides WHERE id=%s", (slide_id,))
+        slide = cur.fetchone()
+        cur.execute("DELETE FROM offer_slides WHERE id=%s", (slide_id,))
+        conn.commit()
+        cur.close()
+    if slide:
+        remove_upload(OFFERS_DIR, slide.get("image_file"))
+    flash("تم حذف العرض.", "success")
+    return redirect(url_for("offers_dashboard"))
+
 # ===== Tableau de bord Admin =====
 @app.route("/admin")
 @admin_login_required
@@ -1135,7 +1311,7 @@ def admin_dashboard():
                            FROM users ORDER BY id DESC""")
         else:
             cur.execute("""SELECT id,username,phone,role,level,subject,status,phone_verified,payment_image,payment_status
-                           FROM users WHERE role NOT IN ('developer','finance') ORDER BY id DESC""")
+                           FROM users WHERE role NOT IN ('developer','finance','marketer') ORDER BY id DESC""")
         users = cur.fetchall()
         cur.execute("""SELECT l.*, u.username AS uploader_name
                        FROM lessons l
@@ -2758,6 +2934,11 @@ def api_archive_files():
                     "createdAt": pdf["created_at"].isoformat() if pdf.get("created_at") else None,
                 })
     return jsonify({"items": items})
+
+@app.get("/api/offers")
+def api_offers():
+    slides = fetch_offer_slides(active_only=True)
+    return jsonify({"offers": [offer_slide_payload(slide) for slide in slides]})
 
 @app.get("/api/results/<exam_type>/centers")
 def api_result_centers(exam_type):
