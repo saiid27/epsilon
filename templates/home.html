@@ -4,29 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>صفحة النتائج | Epsilon Education</title>
-  <meta name="description" content="صفحة نتائج المسابقات الوطنية من Epsilon Education: الباكالوريا، ابريفة، وكونكور.">
-  <meta name="robots" content="index, follow">
+  <meta name="description" content="صفحة نتائج المسابقات الوطنية من Epsilon Education.">
   <link rel="canonical" href="{{ url_for('home', _external=True) }}">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Epsilon Education">
   <meta property="og:title" content="صفحة النتائج | Epsilon Education">
-  <meta property="og:description" content="اختر نوع المسابقة وابحث عن النتيجة بسهولة.">
-  <meta property="og:url" content="{{ url_for('home', _external=True) }}">
+  <meta property="og:description" content="اختر نوع المسابقة للاطلاع على النتائج.">
   <meta property="og:image" content="{{ url_for('static', filename='epsilon.svg', _external=True) }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root {
       --blue: #2f5bea;
       --blue-dark: #2457d6;
-      --green: #0f8a78;
       --ink: #111827;
       --muted: #64748b;
       --line: #e5eaf5;
-      --soft: #f6f8ff;
-      --white: #ffffff;
-      --shadow: 0 18px 46px rgba(31, 41, 71, .10);
+      --shadow: 0 12px 28px rgba(31, 41, 71, .08);
     }
 
     * { box-sizing: border-box; }
@@ -34,130 +27,120 @@
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: "Tajawal", system-ui, sans-serif;
+      background: #fff;
       color: var(--ink);
-      background: var(--white);
+      font-family: "Tajawal", system-ui, sans-serif;
     }
 
-    a { color: inherit; }
-
     .page {
-      width: min(100% - 30px, 390px);
+      width: min(100% - 34px, 360px);
       min-height: 100vh;
       margin: 0 auto;
-      padding: 14px 0 24px;
+      padding: 12px 0 22px;
     }
 
     .topbar {
-      min-height: 34px;
+      min-height: 32px;
+      margin-bottom: 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: 8px;
     }
 
     .brand {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       direction: ltr;
-      text-decoration: none;
       color: var(--blue);
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 900;
+      text-decoration: none;
     }
 
     .brand img {
-      width: 26px;
-      height: 26px;
+      width: 22px;
+      height: 22px;
       object-fit: contain;
     }
 
     .top-actions {
       display: inline-flex;
-      align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .top-link {
-      min-height: 30px;
-      padding: 0 10px;
+      min-height: 28px;
+      padding: 0 9px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border-radius: 10px;
       border: 1px solid var(--line);
+      border-radius: 9px;
       color: var(--blue);
       background: #fff;
-      text-decoration: none;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 900;
+      line-height: 1.1;
+      text-align: center;
+      text-decoration: none;
     }
 
-    .results-header {
-      min-height: 78px;
-      padding: 15px 16px;
+    .hero {
+      min-height: 70px;
+      padding: 13px 15px;
       display: flex;
       align-items: center;
-      gap: 16px;
-      border-radius: 16px;
-      color: #fff;
+      gap: 12px;
+      border-radius: 15px;
       background: var(--blue);
-      box-shadow: 0 12px 26px rgba(47, 91, 234, .18);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(47, 91, 234, .18);
     }
 
-    .header-icon,
-    .tile-icon,
-    .field-icon,
-    .row-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+    .hero svg {
+      width: 28px;
+      height: 28px;
       flex: 0 0 auto;
     }
 
-    .header-icon svg {
-      width: 30px;
-      height: 30px;
-    }
-
-    .results-header h1 {
+    .hero h1 {
       margin: 0;
-      font-size: 23px;
+      font-size: 21px;
       line-height: 1.1;
       font-weight: 900;
     }
 
-    .results-header p {
-      margin: 5px 0 0;
+    .hero p {
+      margin: 4px 0 0;
       color: rgba(255, 255, 255, .78);
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1.35;
       font-weight: 800;
     }
 
     .offers {
-      margin-top: 14px;
+      margin-top: 12px;
     }
 
     .offer-stage {
       position: relative;
       overflow: hidden;
       width: 100%;
+      max-height: 178px;
       aspect-ratio: 16 / 9;
-      max-height: 205px;
-      border-radius: 14px;
-      background: #edf2ff;
       border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #f8fbff;
       box-shadow: var(--shadow);
     }
 
     .offer-stage img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
       display: block;
+      object-fit: cover;
     }
 
     .offer-empty {
@@ -165,327 +148,162 @@
       height: 100%;
       display: grid;
       place-items: center;
-      background: #f8fbff;
     }
 
     .offer-empty img {
-      width: min(54%, 210px);
+      width: 118px;
       height: auto;
       object-fit: contain;
-      filter: drop-shadow(0 14px 26px rgba(47, 91, 234, .16));
+      filter: drop-shadow(0 10px 18px rgba(47, 91, 234, .12));
     }
 
     .offer-dots {
       position: absolute;
       inset-inline: 0;
-      bottom: 12px;
+      bottom: 8px;
       display: flex;
       justify-content: center;
-      gap: 7px;
+      gap: 5px;
     }
 
     .offer-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 999px;
+      width: 6px;
+      height: 6px;
       border: 0;
-      background: rgba(255, 255, 255, .66);
+      border-radius: 999px;
       padding: 0;
+      background: rgba(255, 255, 255, .7);
     }
 
     .offer-dot.active { background: var(--blue); }
 
-    .result-tiles {
-      margin-top: 54px;
+    .tiles {
+      margin-top: 46px;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
+      gap: 9px;
     }
 
-    .result-tile {
+    .tile {
+      min-width: 0;
       aspect-ratio: 1 / 1;
-      max-height: 112px;
-      border: 0;
-      border-radius: 15px;
-      background: var(--blue-dark);
-      color: #fff;
+      max-height: 96px;
+      padding: 8px 6px;
+      border-radius: 14px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 9px;
-      padding: 9px;
-      cursor: pointer;
-      box-shadow: 0 12px 26px rgba(36, 87, 214, .18);
-      transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
-    }
-
-    .result-tile:hover,
-    .result-tile:focus-visible,
-    .result-tile.active {
-      transform: translateY(-3px);
-      background: #1f4cc5;
-      box-shadow: 0 20px 38px rgba(36, 87, 214, .30);
-      outline: none;
-    }
-
-    .tile-icon svg {
-      width: 30px;
-      height: 30px;
-    }
-
-    .result-tile span {
-      max-width: 100%;
-      color: #fff;
-      text-align: center;
-      font-size: 18px;
-      line-height: 1.18;
-      font-weight: 900;
-    }
-
-    .search-card,
-    .text-section,
-    .result-card,
-    .message-card {
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: #fff;
-      box-shadow: var(--shadow);
-    }
-
-    .search-card {
-      display: none;
-      margin-top: 22px;
-      padding: 18px;
-    }
-
-    .search-card.active { display: block; }
-
-    .search-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 14px;
-      color: var(--ink);
-      font-size: 22px;
-      font-weight: 900;
-    }
-
-    .search-title svg {
-      width: 28px;
-      height: 28px;
-      color: var(--blue);
-    }
-
-    .field {
-      position: relative;
-      margin-top: 12px;
-    }
-
-    .field input,
-    .field select {
-      width: 100%;
-      min-height: 56px;
-      padding: 0 54px 0 16px;
-      border: 2px solid #45534f;
-      border-radius: 12px;
-      background: #fff;
-      color: var(--ink);
-      font: 800 18px "Tajawal", system-ui, sans-serif;
-      outline: none;
-    }
-
-    .field input:focus,
-    .field select:focus {
-      border-color: var(--green);
-      box-shadow: 0 0 0 4px rgba(15, 138, 120, .10);
-    }
-
-    .field-icon {
-      position: absolute;
-      right: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #45534f;
-      pointer-events: none;
-    }
-
-    .field-icon svg {
-      width: 26px;
-      height: 26px;
-    }
-
-    .search-button,
-    .contact-button {
-      width: 100%;
-      min-height: 50px;
-      border: 0;
-      border-radius: 16px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
+      gap: 7px;
+      background: var(--blue-dark);
       color: #fff;
       text-decoration: none;
-      cursor: pointer;
-      font: 900 18px "Tajawal", system-ui, sans-serif;
+      box-shadow: 0 12px 24px rgba(36, 87, 214, .18);
+      transition: transform .16s ease, box-shadow .16s ease;
     }
 
-    .search-button {
-      margin-top: 16px;
-      background: var(--green);
+    .tile:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 30px rgba(36, 87, 214, .24);
     }
 
-    .search-button:disabled {
-      cursor: wait;
-      opacity: .72;
+    .tile svg {
+      width: 27px;
+      height: 27px;
+      flex: 0 0 auto;
     }
 
-    .contact-button {
-      margin-top: 50px;
-      background: var(--blue-dark);
+    .tile span {
+      color: #fff;
+      text-align: center;
+      font-size: 16px;
+      line-height: 1.13;
+      font-weight: 900;
     }
 
     .text-section {
       display: none;
-      margin-top: 28px;
-      padding: 15px;
+      margin-top: 30px;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
       background: #f8fbff;
+      box-shadow: var(--shadow);
     }
 
     .text-section.active { display: block; }
 
     .text-section h2 {
-      margin: 0 0 8px;
+      margin: 0 0 6px;
       color: var(--blue-dark);
-      font-size: 18px;
+      font-size: 16px;
+      line-height: 1.25;
       font-weight: 900;
     }
 
     .text-section p {
       margin: 0;
       color: #334155;
-      font-size: 14px;
-      line-height: 1.65;
-      font-weight: 700;
+      font-size: 13px;
+      line-height: 1.55;
+      font-weight: 800;
       white-space: pre-line;
     }
 
-    .results-list {
-      display: grid;
-      gap: 14px;
-      margin-top: 18px;
-    }
-
-    .message-card {
-      padding: 18px;
-      color: var(--muted);
-      text-align: center;
-      font-weight: 800;
-    }
-
-    .message-card.success {
-      border-color: #b7ebcd;
-      background: #edfff4;
-      color: #11814f;
-      text-align: right;
-    }
-
-    .message-card.error {
-      border-color: #fecaca;
-      background: #fff1f2;
-      color: #b91c1c;
-    }
-
-    .result-card {
-      padding: 18px;
-    }
-
-    .result-card h3 {
-      margin: 0 0 16px;
+    .contact {
+      min-height: 48px;
+      margin-top: 42px;
+      border-radius: 15px;
       display: flex;
       align-items: center;
-      justify-content: flex-start;
-      gap: 10px;
-      color: #1e429f;
-      font-size: 22px;
-      font-weight: 900;
-    }
-
-    .result-row {
-      display: grid;
-      grid-template-columns: 150px 1fr;
-      gap: 12px;
-      padding: 13px 0;
-      border-bottom: 1px solid #e5e7eb;
-      align-items: start;
-    }
-
-    .result-row:last-child { border-bottom: 0; }
-
-    .result-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #586478;
+      justify-content: center;
+      gap: 9px;
+      color: #fff;
+      background: var(--blue-dark);
       font-size: 17px;
       font-weight: 900;
+      text-decoration: none;
     }
 
-    .row-icon svg {
-      width: 22px;
-      height: 22px;
-      color: var(--blue);
-    }
-
-    .result-value {
-      direction: auto;
-      color: var(--ink);
-      font-size: 16px;
-      font-weight: 900;
-      overflow-wrap: anywhere;
-      text-align: left;
+    .contact svg {
+      width: 21px;
+      height: 21px;
     }
 
     .footer {
-      margin-top: 16px;
+      margin-top: 12px;
       color: var(--muted);
       text-align: center;
-      font-size: 13px;
-      font-weight: 900;
       direction: ltr;
+      font-size: 12px;
+      font-weight: 900;
     }
 
     .footer-links {
-      margin-top: 18px;
+      margin-top: 14px;
       display: flex;
       justify-content: center;
-      gap: 22px;
+      gap: 18px;
       color: var(--blue);
-      direction: rtl;
-    }
-
-    .footer-links a {
-      text-decoration: none;
+      font-size: 12px;
       font-weight: 900;
     }
 
-    .hidden { display: none !important; }
+    .footer-links a {
+      color: inherit;
+      text-decoration: none;
+    }
 
-    @media (max-width: 420px) {
-      .page { width: min(100% - 30px, 370px); }
+    @media (max-width: 390px) {
+      .page { width: min(100% - 30px, 340px); }
       .brand span { display: none; }
-      .results-header h1 { font-size: 22px; }
-      .results-header p { font-size: 13px; }
-      .result-tiles { gap: 9px; margin-top: 48px; }
-      .result-tile { border-radius: 14px; max-height: 104px; }
-      .tile-icon svg { width: 28px; height: 28px; }
-      .result-tile span { font-size: 17px; }
-      .result-row {
-        grid-template-columns: 1fr;
-        gap: 7px;
-      }
-      .result-value { text-align: right; }
+      .hero h1 { font-size: 20px; }
+      .hero p { font-size: 11px; }
+      .offer-stage { max-height: 160px; }
+      .tiles { margin-top: 40px; gap: 8px; }
+      .tile { max-height: 88px; border-radius: 13px; }
+      .tile svg { width: 25px; height: 25px; }
+      .tile span { font-size: 15px; }
     }
   </style>
 </head>
@@ -502,16 +320,14 @@
       </div>
     </nav>
 
-    <section class="results-header" aria-labelledby="results-title">
-      <span class="header-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none">
-          <path d="M8 7h8M8 12h5M8 17h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-          <path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="2.2"/>
-          <path d="m15.5 12.5 1.5 1.5 3-3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </span>
+    <section class="hero">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M8 7h8M8 12h5M8 17h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="2.2"/>
+        <path d="m15.5 12.5 1.5 1.5 3-3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
       <div>
-        <h1 id="results-title">صفحة النتائج</h1>
+        <h1>صفحة النتائج</h1>
         <p>اختر نوع المسابقة للاطلاع على النتائج</p>
       </div>
     </section>
@@ -524,84 +340,36 @@
       </div>
     </section>
 
-    <section class="result-tiles" aria-label="أنواع النتائج">
-      <button class="result-tile" type="button" data-exam="bac-first" data-title="نتائج الباكالوريا الدورة الأولى">
-        <span class="tile-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M7 4h10v6a5 5 0 0 1-10 0V4Z" stroke="currentColor" stroke-width="2.2"/>
-            <path d="M7 7H4v2a3 3 0 0 0 3 3M17 7h3v2a3 3 0 0 1-3 3M12 15v4M9 20h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
-        </span>
-        <span>الباكالوريا<br>الدورة الأولى</span>
-      </button>
-      <button class="result-tile" type="button" data-exam="brevet" data-title="نتائج ابريفة">
-        <span class="tile-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M5 5.5A3.5 3.5 0 0 1 8.5 2H20v17H8.5A3.5 3.5 0 0 0 5 22V5.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
-            <path d="M5 5.5A3.5 3.5 0 0 0 1.5 2H4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M9 6h7M9 10h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
-        </span>
-        <span>ابريفة</span>
-      </button>
-      <button class="result-tile" type="button" data-exam="concours" data-title="نتائج كونكور">
-        <span class="tile-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="m2 9 10-5 10 5-10 5L2 9Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
-            <path d="M6 11.5V16c2.7 2 9.3 2 12 0v-4.5" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
-            <path d="M22 9v6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
-        </span>
-        <span>كونكور</span>
-      </button>
-    </section>
-
-    <section class="search-card" id="searchCard" aria-live="polite">
-      <div class="search-title">
+    <section class="tiles" aria-label="أنواع النتائج">
+      <a class="tile" href="{{ url_for('public_results_search', exam_type='bac-first') }}">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
-          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2.4"/>
+          <path d="M7 4h10v6a5 5 0 0 1-10 0V4Z" stroke="currentColor" stroke-width="2.2"/>
+          <path d="M7 7H4v2a3 3 0 0 0 3 3M17 7h3v2a3 3 0 0 1-3 3M12 15v4M9 20h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
         </svg>
-        <span id="searchTitle">البحث عن نتيجة</span>
-      </div>
-
-      <div class="field hidden" id="centerField">
-        <span class="field-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M3 21h18M5 21V9h14v12M4 9l8-5 8 5M9 13h6M9 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </span>
-        <select id="centerSelect">
-          <option value="">مركز الامتحان</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <span class="field-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M7 7h10M7 12h10M7 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2.2"/>
-          </svg>
-        </span>
-        <input id="queryInput" type="search" inputmode="search" autocomplete="off" placeholder="رقم المترشح أو الاسم الكامل">
-      </div>
-
-      <button class="search-button" id="searchButton" type="button">
-        <span>بحث</span>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
-          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2.4"/>
+        <span>الباكالوريا<br>الدورة الأولى</span>
+      </a>
+      <a class="tile" href="{{ url_for('public_results_search', exam_type='brevet') }}">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M5 5.5A3.5 3.5 0 0 1 8.5 2H20v17H8.5A3.5 3.5 0 0 0 5 22V5.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M9 6h7M9 10h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
         </svg>
-      </button>
+        <span>ابريفة</span>
+      </a>
+      <a class="tile" href="{{ url_for('public_results_search', exam_type='concours') }}">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m2 9 10-5 10 5-10 5L2 9Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M6 11.5V16c2.7 2 9.3 2 12 0v-4.5" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M22 9v6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <span>كونكور</span>
+      </a>
     </section>
-
-    <div class="results-list" id="resultsList"></div>
 
     <section class="text-section" id="textSection"></section>
 
-    <a class="contact-button" href="{{ url_for('contact') }}">
+    <a class="contact" href="{{ url_for('contact') }}">
       <span>طلب التواصل</span>
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M5 12a7 7 0 0 1 14 0v4a2 2 0 0 1-2 2h-2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
         <path d="M9 18h3a2 2 0 0 0 2-2v-1h-3a2 2 0 0 0-2 2v1Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
       </svg>
@@ -616,48 +384,9 @@
   </main>
 
   <script>
-    const state = {
-      exam: '',
-      title: '',
-      offers: [],
-      offerIndex: 0,
-      offerTimer: null,
-      centersLoaded: false,
-    };
-
-    const labels = {
-      fullName: 'الاسم الكامل',
-      candidateNumber: 'رقم المترشح',
-      birthPlace: 'مكان الميلاد',
-      birthDate: 'تاريخ الميلاد',
-      centerName: 'مركز الامتحان',
-      wilaya: 'الولاية',
-      moughataa: 'المقاطعة',
-      score: 'المعدل',
-      decision: 'القرار',
-      rank: 'الترتيب',
-    };
-
-    const iconSvg = {
-      fullName: '<path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
-      candidateNumber: '<path d="M4 7h16M4 17h16M8 4l-2 16M18 4l-2 16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
-      centerName: '<path d="M3 21h18M5 21V9h14v12M4 9l8-5 8 5M9 13h6M9 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
-      wilaya: '<path d="M12 21s7-5.1 7-11a7 7 0 1 0-14 0c0 5.9 7 11 7 11Z" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="2.2"/>',
-      score: '<path d="M4 17 9 12l4 4 7-9M4 21h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
-      decision: '<path d="M7 3h10l3 3v15H4V3h3Z" stroke="currentColor" stroke-width="2.2"/><path d="m8 13 2.5 2.5L16 10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
-      default: '<path d="M7 7h10M7 12h10M7 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
-    };
-
-    const tiles = document.querySelectorAll('.result-tile');
-    const searchCard = document.getElementById('searchCard');
-    const searchTitle = document.getElementById('searchTitle');
-    const centerField = document.getElementById('centerField');
-    const centerSelect = document.getElementById('centerSelect');
-    const queryInput = document.getElementById('queryInput');
-    const searchButton = document.getElementById('searchButton');
-    const resultsList = document.getElementById('resultsList');
     const offerStage = document.getElementById('offerStage');
     const textSection = document.getElementById('textSection');
+    const state = { offers: [], index: 0, timer: null };
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -668,142 +397,22 @@
         .replaceAll("'", '&#039;');
     }
 
-    function rowIcon(key) {
-      return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${iconSvg[key] || iconSvg.default}</svg>`;
-    }
-
-    function selectExam(exam, title) {
-      state.exam = exam;
-      state.title = title;
-      tiles.forEach((tile) => tile.classList.toggle('active', tile.dataset.exam === exam));
-      searchTitle.textContent = title;
-      searchCard.classList.add('active');
-      resultsList.innerHTML = '';
-      queryInput.value = '';
-      queryInput.focus();
-      centerField.classList.toggle('hidden', exam !== 'concours');
-      if (exam === 'concours') loadCenters();
-      searchCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    async function loadCenters() {
-      if (state.centersLoaded) return;
-      centerSelect.innerHTML = '<option value="">جاري تحميل المراكز...</option>';
-      try {
-        const response = await fetch('/api/results/concours/centers');
-        const data = await response.json();
-        const centers = data.centers || [];
-        centerSelect.innerHTML = '<option value="">مركز الامتحان</option>' +
-          centers.map((center) => `<option value="${escapeHtml(center)}">${escapeHtml(center)}</option>`).join('');
-        state.centersLoaded = true;
-      } catch (error) {
-        centerSelect.innerHTML = '<option value="">تعذر تحميل المراكز</option>';
-      }
-    }
-
-    function resultRows(result) {
-      const keys = ['fullName', 'candidateNumber'];
-      if (result.birthPlace) keys.push('birthPlace');
-      if (result.birthDate) keys.push('birthDate');
-      if (result.centerName) keys.push('centerName');
-      if (result.wilaya) keys.push('wilaya');
-      if (result.moughataa) keys.push('moughataa');
-      if (result.score) keys.push('score');
-      if (result.decision) keys.push('decision');
-      if (result.rank) keys.push('rank');
-
-      return keys
-        .filter((key) => result[key] !== undefined && result[key] !== null && String(result[key]).trim() !== '')
-        .map((key) => `
-          <div class="result-row">
-            <div class="result-label">
-              <span class="row-icon">${rowIcon(key)}</span>
-              <span>${labels[key]}</span>
-            </div>
-            <div class="result-value">${escapeHtml(result[key])}</div>
-          </div>
-        `)
-        .join('');
-    }
-
-    function isSuccess(result) {
-      if (result.examType === 'concours') {
-        const score = Number(String(result.score || '').replace(',', '.'));
-        return Number.isFinite(score) && score >= 100;
-      }
-      return String(result.decision || '').toLowerCase().includes('admis');
-    }
-
-    function renderResults(results) {
-      if (!results.length) {
-        resultsList.innerHTML = '<div class="message-card">لم يتم العثور على نتيجة مطابقة.</div>';
-        return;
-      }
-
-      resultsList.innerHTML = results.map((result) => {
-        const success = isSuccess(result);
-        return `
-          ${success ? '<div class="message-card success"><strong>مبروك! لقد نجحت</strong><br>نتمنى لك مستقبلا موفقا ومشرقا</div>' : ''}
-          <article class="result-card">
-            <h3>
-              <span class="row-icon">${rowIcon('candidateNumber')}</span>
-              <span>بيانات المترشح</span>
-            </h3>
-            ${resultRows(result)}
-          </article>
-        `;
-      }).join('');
-    }
-
-    async function runSearch() {
-      if (!state.exam) {
-        resultsList.innerHTML = '<div class="message-card">اختر نوع المسابقة أولا.</div>';
-        return;
-      }
-      const query = queryInput.value.trim();
-      const center = centerSelect.value.trim();
-      if (state.exam === 'concours' && !center) {
-        resultsList.innerHTML = '<div class="message-card error">اختر مركز الامتحان أولا.</div>';
-        return;
-      }
-      if (!query) {
-        resultsList.innerHTML = '<div class="message-card error">اكتب رقم المترشح أو الاسم الكامل.</div>';
-        return;
-      }
-
-      searchButton.disabled = true;
-      searchButton.querySelector('span').textContent = 'جاري البحث...';
-      try {
-        const params = new URLSearchParams({ q: query });
-        if (state.exam === 'concours') params.set('center', center);
-        const response = await fetch(`/api/results/${state.exam}?${params.toString()}`);
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'تعذر البحث');
-        renderResults(data.results || []);
-      } catch (error) {
-        resultsList.innerHTML = `<div class="message-card error">${escapeHtml(error.message || 'حدث خطأ أثناء البحث.')}</div>`;
-      } finally {
-        searchButton.disabled = false;
-        searchButton.querySelector('span').textContent = 'بحث';
-      }
-    }
-
     function renderOffer() {
-      clearTimeout(state.offerTimer);
+      clearTimeout(state.timer);
       if (!state.offers.length) return;
-      const offer = state.offers[state.offerIndex];
+      const offer = state.offers[state.index];
       offerStage.innerHTML = `
         <img src="${escapeHtml(offer.imageUrl)}" alt="${escapeHtml(offer.title || 'عرض')}">
         ${state.offers.length > 1 ? `
           <div class="offer-dots">
-            ${state.offers.map((_, index) => `<button class="offer-dot ${index === state.offerIndex ? 'active' : ''}" type="button" aria-label="عرض ${index + 1}"></button>`).join('')}
+            ${state.offers.map((_, index) => `<button class="offer-dot ${index === state.index ? 'active' : ''}" type="button" aria-label="عرض ${index + 1}"></button>`).join('')}
           </div>
         ` : ''}
       `;
       if (state.offers.length > 1) {
         const duration = Math.max(1, Number(offer.durationSeconds || 5));
-        state.offerTimer = setTimeout(() => {
-          state.offerIndex = (state.offerIndex + 1) % state.offers.length;
+        state.timer = setTimeout(() => {
+          state.index = (state.index + 1) % state.offers.length;
           renderOffer();
         }, duration * 1000);
       }
@@ -828,14 +437,6 @@
         state.offers = [];
       }
     }
-
-    tiles.forEach((tile) => {
-      tile.addEventListener('click', () => selectExam(tile.dataset.exam, tile.dataset.title));
-    });
-    searchButton.addEventListener('click', runSearch);
-    queryInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') runSearch();
-    });
 
     loadOffers();
   </script>

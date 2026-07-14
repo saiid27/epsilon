@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }} | Epsilon Education</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #2f5bea;
+      --blue-dark: #2457d6;
+      --green: #0f8a78;
+      --ink: #111827;
+      --muted: #64748b;
+      --line: #e5eaf5;
+      --shadow: 0 12px 28px rgba(31, 41, 71, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #f7f9ff;
+      color: var(--ink);
+      font-family: "Tajawal", system-ui, sans-serif;
+    }
+
+    .page {
+      width: min(100% - 34px, 360px);
+      margin: 0 auto;
+      padding: 12px 0 24px;
+    }
+
+    .back {
+      width: 36px;
+      height: 36px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: #fff;
+      color: var(--ink);
+      text-decoration: none;
+      box-shadow: var(--shadow);
+    }
+
+    .back svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .hero {
+      margin-top: 14px;
+      min-height: 74px;
+      padding: 14px 15px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-radius: 15px;
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(47, 91, 234, .18);
+    }
+
+    .hero svg {
+      width: 29px;
+      height: 29px;
+      flex: 0 0 auto;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.12;
+      font-weight: 900;
+    }
+
+    .hero p {
+      margin: 4px 0 0;
+      color: rgba(255, 255, 255, .78);
+      font-size: 12px;
+      line-height: 1.35;
+      font-weight: 800;
+    }
+
+    .search-card,
+    .result-card,
+    .message {
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .search-card {
+      margin-top: 14px;
+      padding: 14px;
+    }
+
+    .search-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .search-title svg {
+      width: 23px;
+      height: 23px;
+      color: var(--blue);
+    }
+
+    .field {
+      position: relative;
+      margin-top: 10px;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-height: 48px;
+      padding: 0 46px 0 12px;
+      border: 2px solid #42504c;
+      border-radius: 11px;
+      background: #fff;
+      color: var(--ink);
+      font: 800 15px "Tajawal", system-ui, sans-serif;
+      outline: none;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 4px rgba(15, 138, 120, .09);
+    }
+
+    .field-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #42504c;
+      pointer-events: none;
+    }
+
+    .field-icon svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .button {
+      width: 100%;
+      min-height: 50px;
+      margin-top: 13px;
+      border: 0;
+      border-radius: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #fff;
+      background: var(--green);
+      cursor: pointer;
+      font: 900 17px "Tajawal", system-ui, sans-serif;
+    }
+
+    .button:disabled {
+      cursor: wait;
+      opacity: .72;
+    }
+
+    .results {
+      margin-top: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .message {
+      padding: 14px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .message.error {
+      border-color: #fecaca;
+      background: #fff1f2;
+      color: #b91c1c;
+    }
+
+    .message.success {
+      border-color: #b7ebcd;
+      background: #edfff4;
+      color: #11814f;
+      text-align: right;
+    }
+
+    .result-card {
+      padding: 14px;
+    }
+
+    .result-card h2 {
+      margin: 0 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #1e429f;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 9px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .row:last-child { border-bottom: 0; }
+
+    .label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #586478;
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .label svg {
+      width: 18px;
+      height: 18px;
+      color: var(--blue);
+    }
+
+    .value {
+      direction: auto;
+      text-align: left;
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 390px) {
+      .page { width: min(100% - 30px, 340px); }
+      .row { grid-template-columns: 1fr; gap: 5px; }
+      .value { text-align: right; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <a class="back" href="{{ url_for('home') }}" aria-label="رجوع">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M19 12H5m6-6-6 6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
+
+    <section class="hero">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        {% if exam_type == 'concours' %}
+          <path d="m2 9 10-5 10 5-10 5L2 9Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M6 11.5V16c2.7 2 9.3 2 12 0v-4.5" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+        {% elif exam_type == 'brevet' %}
+          <path d="M5 5.5A3.5 3.5 0 0 1 8.5 2H20v17H8.5A3.5 3.5 0 0 0 5 22V5.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M9 6h7M9 10h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        {% else %}
+          <path d="M7 4h10v6a5 5 0 0 1-10 0V4Z" stroke="currentColor" stroke-width="2.2"/>
+          <path d="M7 7H4v2a3 3 0 0 0 3 3M17 7h3v2a3 3 0 0 1-3 3M12 15v4M9 20h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        {% endif %}
+      </svg>
+      <div>
+        <h1>{{ title }}</h1>
+        <p>ابحث برقم المترشح أو الاسم الكامل</p>
+      </div>
+    </section>
+
+    <section class="search-card">
+      <div class="search-title">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2.4"/>
+        </svg>
+        <span>البحث عن نتيجة</span>
+      </div>
+
+      <div class="field {% if exam_type != 'concours' %}hidden{% endif %}" id="centerField">
+        <span class="field-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M3 21h18M5 21V9h14v12M4 9l8-5 8 5M9 13h6M9 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <select id="centerSelect">
+          <option value="">مركز الامتحان</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <span class="field-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M7 7h10M7 12h10M7 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2.2"/>
+          </svg>
+        </span>
+        <input id="queryInput" type="search" autocomplete="off" inputmode="search" placeholder="رقم المترشح أو الاسم الكامل">
+      </div>
+
+      <button class="button" id="searchButton" type="button">بحث</button>
+    </section>
+
+    <section class="results" id="results"></section>
+  </main>
+
+  <script>
+    const examType = {{ exam_type|tojson }};
+    const queryInput = document.getElementById('queryInput');
+    const centerSelect = document.getElementById('centerSelect');
+    const searchButton = document.getElementById('searchButton');
+    const resultsEl = document.getElementById('results');
+
+    const labels = {
+      fullName: 'الاسم الكامل',
+      candidateNumber: 'رقم المترشح',
+      birthPlace: 'مكان الميلاد',
+      birthDate: 'تاريخ الميلاد',
+      centerName: 'مركز الامتحان',
+      wilaya: 'الولاية',
+      moughataa: 'المقاطعة',
+      score: 'المعدل',
+      decision: 'القرار',
+      rank: 'الترتيب',
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function icon() {
+      return '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 7h10M7 12h10M7 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+    }
+
+    async function loadCenters() {
+      if (examType !== 'concours') return;
+      centerSelect.innerHTML = '<option value="">جاري تحميل المراكز...</option>';
+      try {
+        const response = await fetch('/api/results/concours/centers');
+        const data = await response.json();
+        centerSelect.innerHTML = '<option value="">مركز الامتحان</option>' +
+          (data.centers || []).map((center) => `<option value="${escapeHtml(center)}">${escapeHtml(center)}</option>`).join('');
+      } catch (_) {
+        centerSelect.innerHTML = '<option value="">تعذر تحميل المراكز</option>';
+      }
+    }
+
+    function isSuccess(result) {
+      if (result.examType === 'concours') {
+        const score = Number(String(result.score || '').replace(',', '.'));
+        return Number.isFinite(score) && score >= 100;
+      }
+      return String(result.decision || '').toLowerCase().includes('admis');
+    }
+
+    function renderResult(result) {
+      const keys = ['fullName', 'candidateNumber'];
+      ['birthPlace', 'birthDate', 'centerName', 'wilaya', 'moughataa', 'score', 'decision', 'rank'].forEach((key) => {
+        if (result[key]) keys.push(key);
+      });
+      const rows = keys.map((key) => `
+        <div class="row">
+          <div class="label">${icon()}<span>${labels[key]}</span></div>
+          <div class="value">${escapeHtml(result[key])}</div>
+        </div>
+      `).join('');
+      return `
+        ${isSuccess(result) ? '<div class="message success"><strong>مبروك! لقد نجحت</strong><br>نتمنى لك مستقبلا موفقا ومشرقا</div>' : ''}
+        <article class="result-card">
+          <h2>${icon()}<span>بيانات المترشح</span></h2>
+          ${rows}
+        </article>
+      `;
+    }
+
+    async function search() {
+      const query = queryInput.value.trim();
+      const center = centerSelect.value.trim();
+      if (examType === 'concours' && !center) {
+        resultsEl.innerHTML = '<div class="message error">اختر مركز الامتحان أولا.</div>';
+        return;
+      }
+      if (!query) {
+        resultsEl.innerHTML = '<div class="message error">اكتب رقم المترشح أو الاسم الكامل.</div>';
+        return;
+      }
+      searchButton.disabled = true;
+      searchButton.textContent = 'جاري البحث...';
+      try {
+        const params = new URLSearchParams({ q: query });
+        if (examType === 'concours') params.set('center', center);
+        const response = await fetch(`/api/results/${examType}?${params.toString()}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'تعذر البحث');
+        const results = data.results || [];
+        resultsEl.innerHTML = results.length
+          ? results.map(renderResult).join('')
+          : '<div class="message">لم يتم العثور على نتيجة مطابقة.</div>';
+      } catch (error) {
+        resultsEl.innerHTML = `<div class="message error">${escapeHtml(error.message || 'حدث خطأ أثناء البحث.')}</div>`;
+      } finally {
+        searchButton.disabled = false;
+        searchButton.textContent = 'بحث';
+      }
+    }
+
+    searchButton.addEventListener('click', search);
+    queryInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') search();
+    });
+    loadCenters();
+  </script>
+</body>
+</html>

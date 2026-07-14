@@ -398,6 +398,16 @@ def home():
                                 "student_dashboard"))
     return render_template("home.html", free_pdfs=fetch_free_pdfs(active_only=True))
 
+@app.route("/results/<exam_type>")
+def public_results_search(exam_type):
+    if exam_type not in RESULT_EXAM_TYPES:
+        return redirect(url_for("home"))
+    return render_template(
+        "public_results_search.html",
+        exam_type=exam_type,
+        title=RESULT_EXAM_LABELS.get(exam_type, "نتائج المسابقات"),
+    )
+
 @app.route("/about")
 def about():
     return render_template("about.html")
