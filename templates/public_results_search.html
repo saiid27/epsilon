@@ -412,7 +412,7 @@
     function isSuccess(result) {
       if (result.examType === 'concours') {
         const score = Number(String(result.score || '').replace(',', '.'));
-        return Number.isFinite(score) && score >= 100;
+        return Number.isFinite(score) && score >= 85;
       }
       return String(result.decision || '').toLowerCase().includes('admis');
     }
