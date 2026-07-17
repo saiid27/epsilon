@@ -201,6 +201,20 @@
       text-align: right;
     }
 
+    .message.notice {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+      color: #1d4ed8;
+      text-align: right;
+    }
+
+    .message.warning {
+      border-color: #fed7aa;
+      background: #fff7ed;
+      color: #b45309;
+      text-align: right;
+    }
+
     .result-card {
       padding: 14px;
     }
@@ -417,6 +431,35 @@
       return String(result.decision || '').toLowerCase().includes('admis');
     }
 
+    function isSessionnaire(result) {
+      return String(result.decision || '').toLowerCase().includes('sessionnaire');
+    }
+
+    function resultMessage(result) {
+      if (isSuccess(result)) {
+        return {
+          className: 'success',
+          title: 'منصة ابسيلون تبارك لك',
+          subtitle: 'وتهنئك على نجاحك'
+        };
+      }
+      if (isSessionnaire(result)) {
+        return {
+          className: 'notice',
+          title: 'منصة ابسيلون تتمنى لك حظا أوفر',
+          subtitle: 'في الدورة التكميلية'
+        };
+      }
+      if (String(result.decision || '').trim()) {
+        return {
+          className: 'warning',
+          title: 'منصة ابسيلون تتمنى لك',
+          subtitle: 'حظا أوفر'
+        };
+      }
+      return null;
+    }
+
     function playApplause() {
       if (!applauseAudio) return;
       applauseAudio.currentTime = 0;
@@ -470,6 +513,7 @@
 
     function renderResult(result) {
       const series = seriesFromRawData(result);
+      const message = resultMessage(result);
       const keys = ['fullName', 'candidateNumber'];
       if (series) {
         result.series = series;
@@ -485,7 +529,7 @@
         </div>
       `).join('');
       return `
-        ${isSuccess(result) ? '<div class="message success"><strong>مبروك! لقد نجحت</strong><br>نتمنى لك مستقبلا موفقا ومشرقا</div>' : ''}
+        ${message ? `<div class="message ${message.className}"><strong>${message.title}</strong><br>${message.subtitle}</div>` : ''}
         <article class="result-card">
           <h2>${icon()}<span>بيانات المترشح</span></h2>
           ${rows}
