@@ -51,7 +51,7 @@ def add_api_cors_headers(response):
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
-    if request.path in {"/", "/results"} or request.path.startswith("/results/") or request.path.startswith("/api/results/"):
+    if request.path in {"/", "/results"} or request.path.startswith("/results/") or request.path.startswith("/api/results/") or request.path.startswith("/api/visitors/"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -749,6 +749,12 @@ def ensure_courses_table():
             )
         """)
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS active_site_visitors (
+                visitor_key VARCHAR(80) PRIMARY KEY,
+                last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS offer_slides (
                 id SERIAL PRIMARY KEY,
                 title VARCHAR(160) NOT NULL DEFAULT '',
@@ -851,6 +857,10 @@ def ensure_courses_table():
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_offer_slides_active_order
             ON offer_slides (active, sort_order ASC, id DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_active_site_visitors_last_seen
+            ON active_site_visitors (last_seen DESC)
         """)
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_in_person_students_active
@@ -3027,6 +3037,37 @@ def api_offers():
             "active": settings.get("offerTextActive", "true") != "false",
         },
     })
+
+@app.get("/api/visitors/online")
+def api_online_visitors():
+    visitor_id = (request.headers.get("X-Visitor-Id") or "").strip()
+    fallback_identity = "|".join([
+        request.headers.get("X-Forwarded-For", request.remote_addr or ""),
+        request.headers.get("User-Agent", ""),
+    ])
+    visitor_key_source = visitor_id or fallback_identity or str(random.random())
+    visitor_key = hashlib.sha256(visitor_key_source.encode("utf-8")).hexdigest()
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            DELETE FROM active_site_visitors
+            WHERE last_seen < CURRENT_TIMESTAMP - INTERVAL '2 minutes'
+        """)
+        cur.execute("""
+            INSERT INTO active_site_visitors (visitor_key, last_seen)
+            VALUES (%s, CURRENT_TIMESTAMP)
+            ON CONFLICT (visitor_key)
+            DO UPDATE SET last_seen = EXCLUDED.last_seen
+        """, (visitor_key,))
+        cur.execute("""
+            SELECT COUNT(*)
+            FROM active_site_visitors
+            WHERE last_seen >= CURRENT_TIMESTAMP - INTERVAL '2 minutes'
+        """)
+        online_count = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+    return jsonify({"online": online_count})
 
 @app.get("/api/results/<exam_type>/centers")
 def api_result_centers(exam_type):

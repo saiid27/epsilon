@@ -250,7 +250,7 @@
       white-space: pre-line;
     }
 
-    .contact {
+    .visitor-counter {
       min-height: 48px;
       margin-top: 42px;
       border-radius: 15px;
@@ -262,12 +262,24 @@
       background: var(--blue-dark);
       font-size: 17px;
       font-weight: 900;
-      text-decoration: none;
     }
 
-    .contact svg {
+    .visitor-counter svg {
       width: 21px;
       height: 21px;
+    }
+
+    .visitor-count {
+      min-width: 28px;
+      height: 28px;
+      padding: 0 9px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, .18);
+      font-size: 16px;
+      line-height: 1;
     }
 
     .footer {
@@ -367,13 +379,15 @@
 
     <section class="text-section" id="textSection"></section>
 
-    <a class="contact" href="{{ url_for('contact') }}">
-      <span>طلب التواصل</span>
+    <div class="visitor-counter" aria-live="polite">
+      <span>زوار الموقع حالياً</span>
+      <strong class="visitor-count" id="visitorCount">...</strong>
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M5 12a7 7 0 0 1 14 0v4a2 2 0 0 1-2 2h-2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-        <path d="M9 18h3a2 2 0 0 0 2-2v-1h-3a2 2 0 0 0-2 2v1Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+        <path d="M16 11a4 4 0 1 0-8 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M6 20a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M19 9.5a3 3 0 0 1 1.5 5.6M5 9.5a3 3 0 0 0-1.5 5.6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
       </svg>
-    </a>
+    </div>
 
     <div class="footer">epsilon | dev. med said mohameden</div>
     <div class="footer-links">
@@ -386,7 +400,20 @@
   <script>
     const offerStage = document.getElementById('offerStage');
     const textSection = document.getElementById('textSection');
+    const visitorCount = document.getElementById('visitorCount');
     const state = { offers: [], index: 0, timer: null };
+
+    function visitorId() {
+      const key = 'epsilonVisitorId';
+      let value = localStorage.getItem(key);
+      if (!value) {
+        value = window.crypto && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random()}`;
+        localStorage.setItem(key, value);
+      }
+      return value;
+    }
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -438,7 +465,22 @@
       }
     }
 
+    async function loadVisitorCount() {
+      try {
+        const response = await fetch('/api/visitors/online', {
+          headers: { 'X-Visitor-Id': visitorId() },
+          cache: 'no-store'
+        });
+        const data = await response.json();
+        visitorCount.textContent = Number(data.online || 0).toLocaleString('ar');
+      } catch (_) {
+        visitorCount.textContent = '-';
+      }
+    }
+
     loadOffers();
+    loadVisitorCount();
+    setInterval(loadVisitorCount, 30000);
   </script>
 </body>
 </html>
