@@ -51,7 +51,7 @@ def add_api_cors_headers(response):
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
-    if request.path == "/results" or request.path.startswith("/results/") or request.path.startswith("/api/results/"):
+    if request.path in {"/", "/results"} or request.path.startswith("/results/") or request.path.startswith("/api/results/"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -400,7 +400,7 @@ def home():
                                 "offers_dashboard" if r=="marketer" else
                                 "teacher_dashboard" if r=="teacher" else
                                 "student_dashboard"))
-    return render_template("home.html")
+    return render_template("public_results_home.html")
 
 @app.route("/results")
 def public_results_home():
