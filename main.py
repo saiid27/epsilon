@@ -3096,10 +3096,11 @@ def api_online_visitors():
     visitor_key = hashlib.sha256(visitor_key_source.encode("utf-8")).hexdigest()
     with db() as conn:
         cur = conn.cursor()
-        cur.execute("""
-            DELETE FROM active_site_visitors
-            WHERE last_seen < CURRENT_TIMESTAMP - INTERVAL '2 minutes'
-        """)
+        if random.random() < 0.05:
+            cur.execute("""
+                DELETE FROM active_site_visitors
+                WHERE last_seen < CURRENT_TIMESTAMP - INTERVAL '2 minutes'
+            """)
         cur.execute("""
             INSERT INTO active_site_visitors (visitor_key, last_seen)
             VALUES (%s, CURRENT_TIMESTAMP)
