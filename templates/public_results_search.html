@@ -100,6 +100,46 @@
       padding: 14px;
     }
 
+    .result-hero {
+      position: relative;
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .result-hero img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+    }
+
+    .new-search {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid rgba(229, 234, 245, .9);
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, .92);
+      color: var(--ink);
+      cursor: pointer;
+      font: 900 13px "Tajawal", system-ui, sans-serif;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, .12);
+    }
+
+    .new-search svg {
+      width: 17px;
+      height: 17px;
+    }
+
     .search-title {
       display: flex;
       align-items: center;
@@ -338,7 +378,7 @@
       </div>
     </section>
 
-    <section class="search-card">
+    <section class="search-card" id="searchCard">
       <div class="search-title">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
@@ -371,6 +411,16 @@
       <button class="button" id="searchButton" type="button">بحث</button>
     </section>
 
+    <section class="result-hero hidden" id="resultHero" aria-label="Epsilon Education">
+      <img src="{{ url_for('static', filename='login_hero.png') }}" alt="Epsilon Education">
+      <button class="new-search" id="newSearchButton" type="button">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M19 12H5m6-6-6 6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>بحث آخر</span>
+      </button>
+    </section>
+
     <section class="results" id="results"></section>
   </main>
 
@@ -379,6 +429,9 @@
     const queryInput = document.getElementById('queryInput');
     const centerSelect = document.getElementById('centerSelect');
     const searchButton = document.getElementById('searchButton');
+    const searchCard = document.getElementById('searchCard');
+    const resultHero = document.getElementById('resultHero');
+    const newSearchButton = document.getElementById('newSearchButton');
     const resultsEl = document.getElementById('results');
     const applauseAudio = document.getElementById('applauseAudio');
     const celebration = document.getElementById('celebration');
@@ -560,6 +613,8 @@
         resultsEl.innerHTML = results.length
           ? results.map(renderResult).join('')
           : '<div class="message">لم يتم العثور على نتيجة مطابقة.</div>';
+        searchCard.classList.toggle('hidden', results.length > 0);
+        resultHero.classList.toggle('hidden', results.length === 0);
         if (results.some(isSuccess)) {
           celebrateSuccess();
         }
@@ -571,7 +626,18 @@
       }
     }
 
+    function resetSearch() {
+      resultsEl.innerHTML = '';
+      resultHero.classList.add('hidden');
+      searchCard.classList.remove('hidden');
+      searchButton.disabled = false;
+      searchButton.textContent = 'بحث';
+      queryInput.focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     searchButton.addEventListener('click', search);
+    newSearchButton.addEventListener('click', resetSearch);
     queryInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') search();
     });
