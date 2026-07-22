@@ -916,6 +916,7 @@ def fetch_app_settings():
         "offerTextTitle": "",
         "offerTextBody": "",
         "offerTextActive": "true",
+        "visitorCountOffset": "0",
     }
     try:
         ensure_courses_table()
@@ -939,6 +940,7 @@ def save_app_settings(values):
         "offerTextTitle",
         "offerTextBody",
         "offerTextActive",
+        "visitorCountOffset",
     }
     cleaned = {
         key: str(value).strip()
@@ -1277,6 +1279,19 @@ def offers_text_update():
     flash("تم حفظ نص العروض.", "success")
     return redirect(url_for("offers_dashboard"))
 
+@app.post("/admin/visitor-offset")
+@developer_required
+def developer_update_visitor_offset():
+    offset_text = request.form.get("visitor_count_offset", "0").strip()
+    try:
+        offset = max(0, int(offset_text or "0"))
+    except ValueError:
+        flash("اكتب رقما صحيحا لزيادة عدد الزوار.", "danger")
+        return redirect(url_for("admin_dashboard"))
+    save_app_settings({"visitorCountOffset": str(offset)})
+    flash("تم تحديث زيادة عداد الزوار.", "success")
+    return redirect(url_for("admin_dashboard"))
+
 @app.post("/offers/upload")
 @marketer_login_required
 def offers_upload():
@@ -1484,6 +1499,7 @@ def admin_dashboard():
                            result_query=result_query,
                            result_exam=result_exam,
                            result_matches=result_matches,
+                           settings=fetch_app_settings(),
                            is_developer=is_developer())
 
 @app.route("/admin/activate/<int:uid>")
@@ -3065,9 +3081,23 @@ def api_online_visitors():
             WHERE last_seen >= CURRENT_TIMESTAMP - INTERVAL '2 minutes'
         """)
         online_count = cur.fetchone()[0]
+        cur.execute("""
+            SELECT value
+            FROM app_settings
+            WHERE key='visitorCountOffset'
+        """)
+        offset_row = cur.fetchone()
         conn.commit()
         cur.close()
-    return jsonify({"online": online_count})
+    try:
+        offset = max(0, int((offset_row[0] if offset_row else "0") or "0"))
+    except ValueError:
+        offset = 0
+    return jsonify({
+        "online": online_count + offset,
+        "realOnline": online_count,
+        "offset": offset,
+    })
 
 @app.get("/api/results/<exam_type>/centers")
 def api_result_centers(exam_type):

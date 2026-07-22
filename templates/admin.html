@@ -468,6 +468,30 @@
   <hr class="my-4">
   <h5 class="mb-3">إدارة الحسابات</h5>
   {% if is_developer %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="mb-3">عداد زوار الموقع</h5>
+      <form class="row g-2 align-items-end" method="POST" action="{{ url_for('developer_update_visitor_offset') }}">
+        <div class="col-12 col-md-4">
+          <label class="form-label">العدد الإضافي الذي يظهر فوق الزوار الحقيقيين</label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            name="visitor_count_offset"
+            class="form-control"
+            value="{{ settings.visitorCountOffset or '0' }}"
+            required
+          >
+        </div>
+        <div class="col-12 col-md-3">
+          <button class="btn btn-primary w-100">حفظ العدد</button>
+        </div>
+      </form>
+      <div class="form-text mt-2">مثال: إذا كان الزوار الحقيقيون 3 وكتبت 50 سيظهر للزوار 53.</div>
+    </div>
+  </div>
+
   <hr class="my-4">
   <h5 class="mb-3">إنشاء حساب أدمن</h5>
   <form class="row g-2" method="POST" action="{{ url_for('developer_create_admin') }}">
