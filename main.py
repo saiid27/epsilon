@@ -1100,6 +1100,8 @@ def fetch_free_pdfs(active_only=True, course_code=None, subject=None):
     return grouped
 
 _schema_ready = False
+_active_visitors = {}
+_visitor_settings_cache = {"loaded_at": 0, "settings": {}}
 
 @app.before_request
 def ensure_schema_ready():
@@ -3087,6 +3089,7 @@ def api_offers():
 
 @app.get("/api/visitors/online")
 def api_online_visitors():
+    global _visitor_settings_cache
     visitor_id = (request.headers.get("X-Visitor-Id") or "").strip()
     fallback_identity = "|".join([
         request.headers.get("X-Forwarded-For", request.remote_addr or ""),
@@ -3094,42 +3097,41 @@ def api_online_visitors():
     ])
     visitor_key_source = visitor_id or fallback_identity or str(random.random())
     visitor_key = hashlib.sha256(visitor_key_source.encode("utf-8")).hexdigest()
-    with db() as conn:
-        cur = conn.cursor()
-        if random.random() < 0.05:
-            cur.execute("""
-                DELETE FROM active_site_visitors
-                WHERE last_seen < CURRENT_TIMESTAMP - INTERVAL '2 minutes'
-            """)
-        cur.execute("""
-            INSERT INTO active_site_visitors (visitor_key, last_seen)
-            VALUES (%s, CURRENT_TIMESTAMP)
-            ON CONFLICT (visitor_key)
-            DO UPDATE SET last_seen = EXCLUDED.last_seen
-        """, (visitor_key,))
-        cur.execute("""
-            SELECT COUNT(*)
-            FROM active_site_visitors
-            WHERE last_seen >= CURRENT_TIMESTAMP - INTERVAL '2 minutes'
-        """)
-        online_count = cur.fetchone()[0]
-        cur.execute("""
-            SELECT key, value
-            FROM app_settings
-            WHERE key IN (
-                'visitorCountOffset',
-                'visitorAutoAddAmount',
-                'visitorAutoAddEverySeconds',
-                'visitorAutoSubtractAmount',
-                'visitorAutoSubtractEverySeconds',
-                'visitorAutomationStartedAt'
-            )
-        """)
-        setting_rows = cur.fetchall()
-        conn.commit()
-        cur.close()
+    now = time.time()
+    cutoff = now - 120
+    _active_visitors[visitor_key] = now
+    if random.random() < 0.10:
+        stale_keys = [key for key, seen_at in _active_visitors.items() if seen_at < cutoff]
+        for key in stale_keys:
+            _active_visitors.pop(key, None)
+    online_count = sum(1 for seen_at in _active_visitors.values() if seen_at >= cutoff)
 
-    visitor_settings = {key: value for key, value in setting_rows}
+    if now - _visitor_settings_cache.get("loaded_at", 0) > 15:
+        try:
+            with db() as conn:
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT key, value
+                    FROM app_settings
+                    WHERE key IN (
+                        'visitorCountOffset',
+                        'visitorAutoAddAmount',
+                        'visitorAutoAddEverySeconds',
+                        'visitorAutoSubtractAmount',
+                        'visitorAutoSubtractEverySeconds',
+                        'visitorAutomationStartedAt'
+                    )
+                """)
+                setting_rows = cur.fetchall()
+                cur.close()
+            _visitor_settings_cache = {
+                "loaded_at": now,
+                "settings": {key: value for key, value in setting_rows},
+            }
+        except psycopg2.OperationalError as e:
+            print("Visitor settings unavailable:", e)
+
+    visitor_settings = _visitor_settings_cache.get("settings", {})
 
     def setting_int(key, default=0, minimum=0):
         try:
@@ -3143,7 +3145,7 @@ def api_online_visitors():
     subtract_amount = setting_int("visitorAutoSubtractAmount")
     subtract_every = setting_int("visitorAutoSubtractEverySeconds", 60, minimum=1)
     started_at = setting_int("visitorAutomationStartedAt")
-    elapsed = max(0, int(time.time()) - started_at) if started_at else 0
+    elapsed = max(0, int(now) - started_at) if started_at else 0
     auto_added = (elapsed // add_every) * add_amount if add_amount else 0
     auto_subtracted = (elapsed // subtract_every) * subtract_amount if subtract_amount else 0
     display_count = max(0, online_count + offset + auto_added - auto_subtracted)
