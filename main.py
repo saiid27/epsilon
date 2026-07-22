@@ -917,6 +917,11 @@ def fetch_app_settings():
         "offerTextBody": "",
         "offerTextActive": "true",
         "visitorCountOffset": "0",
+        "visitorAutoAddAmount": "0",
+        "visitorAutoAddEverySeconds": "60",
+        "visitorAutoSubtractAmount": "0",
+        "visitorAutoSubtractEverySeconds": "60",
+        "visitorAutomationStartedAt": "0",
     }
     try:
         ensure_courses_table()
@@ -941,6 +946,11 @@ def save_app_settings(values):
         "offerTextBody",
         "offerTextActive",
         "visitorCountOffset",
+        "visitorAutoAddAmount",
+        "visitorAutoAddEverySeconds",
+        "visitorAutoSubtractAmount",
+        "visitorAutoSubtractEverySeconds",
+        "visitorAutomationStartedAt",
     }
     cleaned = {
         key: str(value).strip()
@@ -1282,13 +1292,34 @@ def offers_text_update():
 @app.post("/admin/visitor-offset")
 @developer_required
 def developer_update_visitor_offset():
-    offset_text = request.form.get("visitor_count_offset", "0").strip()
+    def positive_int(field, default="0", minimum=0):
+        value = request.form.get(field, default).strip()
+        number = int(value or default)
+        return max(minimum, number)
+
+    def interval_seconds(value_field, unit_field):
+        value = positive_int(value_field, "1", minimum=1)
+        unit = request.form.get(unit_field, "seconds")
+        return value * 60 if unit == "minutes" else value
+
     try:
-        offset = max(0, int(offset_text or "0"))
+        offset = positive_int("visitor_count_offset")
+        add_amount = positive_int("visitor_auto_add_amount")
+        add_every = interval_seconds("visitor_auto_add_every", "visitor_auto_add_unit")
+        subtract_amount = positive_int("visitor_auto_subtract_amount")
+        subtract_every = interval_seconds("visitor_auto_subtract_every", "visitor_auto_subtract_unit")
     except ValueError:
-        flash("اكتب رقما صحيحا لزيادة عدد الزوار.", "danger")
+        flash("اكتب أرقاما صحيحة لإعدادات عداد الزوار.", "danger")
         return redirect(url_for("admin_dashboard"))
-    save_app_settings({"visitorCountOffset": str(offset)})
+
+    save_app_settings({
+        "visitorCountOffset": str(offset),
+        "visitorAutoAddAmount": str(add_amount),
+        "visitorAutoAddEverySeconds": str(add_every),
+        "visitorAutoSubtractAmount": str(subtract_amount),
+        "visitorAutoSubtractEverySeconds": str(subtract_every),
+        "visitorAutomationStartedAt": str(int(time.time())),
+    })
     flash("تم تحديث زيادة عداد الزوار.", "success")
     return redirect(url_for("admin_dashboard"))
 
@@ -3082,21 +3113,45 @@ def api_online_visitors():
         """)
         online_count = cur.fetchone()[0]
         cur.execute("""
-            SELECT value
+            SELECT key, value
             FROM app_settings
-            WHERE key='visitorCountOffset'
+            WHERE key IN (
+                'visitorCountOffset',
+                'visitorAutoAddAmount',
+                'visitorAutoAddEverySeconds',
+                'visitorAutoSubtractAmount',
+                'visitorAutoSubtractEverySeconds',
+                'visitorAutomationStartedAt'
+            )
         """)
-        offset_row = cur.fetchone()
+        setting_rows = cur.fetchall()
         conn.commit()
         cur.close()
-    try:
-        offset = max(0, int((offset_row[0] if offset_row else "0") or "0"))
-    except ValueError:
-        offset = 0
+
+    visitor_settings = {key: value for key, value in setting_rows}
+
+    def setting_int(key, default=0, minimum=0):
+        try:
+            return max(minimum, int(visitor_settings.get(key, str(default)) or default))
+        except ValueError:
+            return minimum
+
+    offset = setting_int("visitorCountOffset")
+    add_amount = setting_int("visitorAutoAddAmount")
+    add_every = setting_int("visitorAutoAddEverySeconds", 60, minimum=1)
+    subtract_amount = setting_int("visitorAutoSubtractAmount")
+    subtract_every = setting_int("visitorAutoSubtractEverySeconds", 60, minimum=1)
+    started_at = setting_int("visitorAutomationStartedAt")
+    elapsed = max(0, int(time.time()) - started_at) if started_at else 0
+    auto_added = (elapsed // add_every) * add_amount if add_amount else 0
+    auto_subtracted = (elapsed // subtract_every) * subtract_amount if subtract_amount else 0
+    display_count = max(0, online_count + offset + auto_added - auto_subtracted)
     return jsonify({
-        "online": online_count + offset,
+        "online": display_count,
         "realOnline": online_count,
         "offset": offset,
+        "autoAdded": auto_added,
+        "autoSubtracted": auto_subtracted,
     })
 
 @app.get("/api/results/<exam_type>/centers")

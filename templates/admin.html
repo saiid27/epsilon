@@ -484,11 +484,57 @@
             required
           >
         </div>
-        <div class="col-12 col-md-3">
+        <div class="col-12 col-md-2">
+          <label class="form-label">أضف رقم</label>
+          <input type="number" min="0" step="1" name="visitor_auto_add_amount" class="form-control" value="{{ settings.visitorAutoAddAmount or '0' }}" required>
+        </div>
+        <div class="col-7 col-md-2">
+          <label class="form-label">كل</label>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            name="visitor_auto_add_every"
+            class="form-control"
+            value="{% if (settings.visitorAutoAddEverySeconds or '60')|int % 60 == 0 %}{{ ((settings.visitorAutoAddEverySeconds or '60')|int // 60) or 1 }}{% else %}{{ settings.visitorAutoAddEverySeconds or '60' }}{% endif %}"
+            required
+          >
+        </div>
+        <div class="col-5 col-md-2">
+          <label class="form-label">الوحدة</label>
+          <select name="visitor_auto_add_unit" class="form-select">
+            <option value="seconds" {% if (settings.visitorAutoAddEverySeconds or '60')|int % 60 != 0 %}selected{% endif %}>ثواني</option>
+            <option value="minutes" {% if (settings.visitorAutoAddEverySeconds or '60')|int % 60 == 0 %}selected{% endif %}>دقائق</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-2">
+          <label class="form-label">انقص رقم</label>
+          <input type="number" min="0" step="1" name="visitor_auto_subtract_amount" class="form-control" value="{{ settings.visitorAutoSubtractAmount or '0' }}" required>
+        </div>
+        <div class="col-7 col-md-2">
+          <label class="form-label">كل</label>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            name="visitor_auto_subtract_every"
+            class="form-control"
+            value="{% if (settings.visitorAutoSubtractEverySeconds or '60')|int % 60 == 0 %}{{ ((settings.visitorAutoSubtractEverySeconds or '60')|int // 60) or 1 }}{% else %}{{ settings.visitorAutoSubtractEverySeconds or '60' }}{% endif %}"
+            required
+          >
+        </div>
+        <div class="col-5 col-md-2">
+          <label class="form-label">الوحدة</label>
+          <select name="visitor_auto_subtract_unit" class="form-select">
+            <option value="seconds" {% if (settings.visitorAutoSubtractEverySeconds or '60')|int % 60 != 0 %}selected{% endif %}>ثواني</option>
+            <option value="minutes" {% if (settings.visitorAutoSubtractEverySeconds or '60')|int % 60 == 0 %}selected{% endif %}>دقائق</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-2">
           <button class="btn btn-primary w-100">حفظ العدد</button>
         </div>
       </form>
-      <div class="form-text mt-2">مثال: إذا كان الزوار الحقيقيون 3 وكتبت 50 سيظهر للزوار 53.</div>
+      <div class="form-text mt-2">مثال: إذا كان الزوار الحقيقيون 3 وكتبت 50 سيظهر 53. وإذا كتبت أضف 10 كل 1 دقيقة سيزيد 10 تلقائياً كل دقيقة. وإذا كتبت انقص 5 كل 30 ثانية سينقص 5 تلقائياً كل 30 ثانية.</div>
     </div>
   </div>
 
