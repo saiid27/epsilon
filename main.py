@@ -2411,11 +2411,20 @@ def api_user_payload(user):
         "createdAt": user.get("created_at").isoformat() if user.get("created_at") else None,
     }
 
-def api_course_payload(course, subjects_by_course=None):
+def api_course_payload(course, subjects_by_course=None, teachers_by_course_subject=None):
     subjects_by_course = subjects_by_course or {}
+    teachers_by_course_subject = teachers_by_course_subject or {}
     subjects = subjects_by_course.get(course["code"])
     if subjects is None:
         subjects = fetch_course_subjects(course["code"])
+    subject_details = []
+    for row in subjects:
+        subject_name = row["subject"]
+        teacher_name = teachers_by_course_subject.get((course["code"], subject_name))
+        subject_details.append({
+            "name": subject_name,
+            "teacherName": teacher_name,
+        })
     return {
         "id": course["code"],
         "dbId": str(course["id"]),
@@ -2427,6 +2436,7 @@ def api_course_payload(course, subjects_by_course=None):
         "description": course.get("description") or course.get("subtitle") or "",
         "price": course.get("badge") or "",
         "subjects": [row["subject"] for row in subjects],
+        "subjectDetails": subject_details,
         "isActive": bool(course.get("active")),
         "sortOrder": course.get("sort_order") or 0,
     }
@@ -2901,9 +2911,27 @@ def api_courses():
     subjects_by_course = {}
     for subject in fetch_course_subjects():
         subjects_by_course.setdefault(subject["course_code"], []).append(subject)
+    teachers_by_course_subject = {}
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""
+            SELECT level, subject, username
+            FROM users
+            WHERE role='teacher'
+              AND status='active'
+              AND level IS NOT NULL
+              AND subject IS NOT NULL
+            ORDER BY id ASC
+        """)
+        for teacher in cur.fetchall():
+            teachers_by_course_subject.setdefault(
+                (teacher["level"], teacher["subject"]),
+                teacher["username"],
+            )
+        cur.close()
     return jsonify({
         "courses": [
-            api_course_payload(course, subjects_by_course)
+            api_course_payload(course, subjects_by_course, teachers_by_course_subject)
             for course in courses
         ]
     })
