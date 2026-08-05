@@ -102,6 +102,27 @@ def db():
 def dict_cursor(conn):
     return conn.cursor(cursor_factory=RealDictCursor)
 
+def parse_selected_subjects(value):
+    if not value:
+        return []
+    if isinstance(value, list):
+        items = value
+    else:
+        try:
+            items = json.loads(value)
+        except (TypeError, ValueError):
+            items = str(value).split(",")
+    return [str(item).strip() for item in items if str(item).strip()]
+
+def selected_subjects_json(subjects, allowed_subjects=None):
+    allowed = set(allowed_subjects or [])
+    cleaned = []
+    for subject in subjects or []:
+        item = str(subject).strip()
+        if item and item not in cleaned and (not allowed or item in allowed):
+            cleaned.append(item)
+    return json.dumps(cleaned, ensure_ascii=False)
+
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
@@ -671,6 +692,7 @@ def ensure_courses_table():
         cur.execute("SELECT to_regclass('public.courses')")
         table_exists = cur.fetchone()[0] is not None
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS subject VARCHAR(80)")
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS selected_subjects TEXT")
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_sender_phone VARCHAR(30)")
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20)")
         cur.execute("""
@@ -2331,13 +2353,19 @@ def student_dashboard():
         subject = None
     with db() as conn:
         cur = dict_cursor(conn)
-        cur.execute("SELECT phone FROM users WHERE id=%s", (session["user_id"],))
+        cur.execute("SELECT phone, selected_subjects FROM users WHERE id=%s", (session["user_id"],))
         student = cur.fetchone()
+        selected_subjects = parse_selected_subjects(student.get("selected_subjects") if student else None)
         if subject:
             cur.execute("""SELECT * FROM lessons
                            WHERE level=%s AND subject=%s
                            ORDER BY uploaded_at DESC""",
                         (level, subject))
+        elif selected_subjects:
+            cur.execute("""SELECT * FROM lessons
+                           WHERE level=%s AND subject = ANY(%s)
+                           ORDER BY uploaded_at DESC""",
+                        (level, selected_subjects))
         else:
             cur.execute("""SELECT * FROM lessons
                            WHERE level=%s
@@ -2376,6 +2404,7 @@ def api_user_payload(user):
         "courseId": user.get("level"),
         "level": user.get("level"),
         "subject": user.get("subject"),
+        "selectedSubjects": parse_selected_subjects(user.get("selected_subjects")),
         "paymentSenderPhone": user.get("payment_sender_phone"),
         "paymentProofUrl": url_for("static", filename=f"uploads/payments/{user['payment_image']}", _external=True)
         if user.get("payment_image") else None,
@@ -2829,17 +2858,20 @@ def api_register_student():
     phone = (data.get("phone") or data.get("email") or "").strip()
     password = data.get("password") or ""
     level = data.get("level") or data.get("classId") or data.get("courseId")
+    subjects = parse_selected_subjects(data.get("selectedSubjects") or data.get("subjects"))
     payment_sender_phone = (data.get("paymentSenderPhone") or "").strip() or None
     if not username or not phone or not password or not level:
         return api_error("Name, phone number, password and course are required.", 400, "missing_fields")
+    allowed_subjects = [row["subject"] for row in fetch_course_subjects(level)]
+    selected_subjects = selected_subjects_json(subjects or allowed_subjects, allowed_subjects)
     try:
         with db() as conn:
             cur = dict_cursor(conn)
             cur.execute("""INSERT INTO users
-                           (username, phone, password, role, level, payment_sender_phone, status, phone_verified)
-                           VALUES (%s,%s,%s,'student',%s,%s,'pending',TRUE)
+                           (username, phone, password, role, level, selected_subjects, payment_sender_phone, status, phone_verified)
+                           VALUES (%s,%s,%s,'student',%s,%s,%s,'pending',TRUE)
                            RETURNING *""",
-                        (username, phone, hash_password(password), level, payment_sender_phone))
+                        (username, phone, hash_password(password), level, selected_subjects, payment_sender_phone))
             user = cur.fetchone()
             conn.commit()
             cur.close()
@@ -2971,6 +3003,10 @@ def api_lessons():
     if user["role"] == "student":
         clauses.append("level=%s")
         params.append(user["level"])
+        selected_subjects = parse_selected_subjects(user.get("selected_subjects"))
+        if selected_subjects:
+            clauses.append("subject = ANY(%s)")
+            params.append(selected_subjects)
     elif user["role"] == "teacher":
         clauses.extend(["uploaded_by=%s", "level=%s", "subject=%s"])
         params.extend([user["id"], user["level"], user["subject"]])
