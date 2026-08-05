@@ -403,15 +403,16 @@
 
       <form method="POST" action="{{ url_for('login') }}" id="loginForm">
         <div class="field">
-          <i class="bi bi-envelope right-icon"></i>
+          <i class="bi bi-phone right-icon"></i>
           <input
-            type="text"
-            name="username"
-            id="username"
+            type="tel"
+            name="phone"
+            id="phone"
             required
-            autocomplete="username"
+            inputmode="tel"
+            autocomplete="tel"
             autofocus
-            placeholder="اسم المستخدم أو رقم الهاتف">
+            placeholder="رقم الهاتف">
         </div>
 
         <div class="field">

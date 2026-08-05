@@ -482,7 +482,7 @@ def login():
             return redirect(url_for("home"))
         return render_template("login.html")
 
-    identifier = request.form.get("username","").strip()
+    identifier = (request.form.get("phone") or request.form.get("username") or "").strip()
     password = request.form.get("password","")
     with db() as conn:
         cur = dict_cursor(conn)
@@ -492,15 +492,15 @@ def login():
                     (identifier, identifier, hash_password(password)))
         u = cur.fetchone(); cur.close()
     if not u:
-        flash("Identifiants incorrects.", "danger"); return redirect(url_for("login"))
+        flash("رقم الهاتف أو كلمة المرور غير صحيحة.", "danger"); return redirect(url_for("login"))
     if u["phone_verified"] != 1:
         code = create_otp(u["phone"], "register")
         send_sms(u["phone"], f"Votre code de vÃ©rification est : {code}")
         session["pending_phone"] = u["phone"]
-        flash("Vous devez dâ€™abord valider votre numÃ©ro de tÃ©lÃ©phone.", "warning")
+        flash("يجب التحقق من رقم الهاتف أولاً.", "warning")
         return redirect(url_for("verify_phone"))
     if u["status"] != "active":
-        flash("Compte en attente dâ€™approbation par lâ€™administrateur.", "warning"); return redirect(url_for("login"))
+        flash("الحساب بانتظار موافقة الإدارة.", "warning"); return redirect(url_for("login"))
     session.update(user_id=u["id"], role=u["role"], level=u["level"], subject=u.get("subject"))
     return redirect(url_for("home"))
 
@@ -2721,7 +2721,7 @@ def api_login():
     identifier = (data.get("identifier") or data.get("username") or data.get("phone") or data.get("email") or "").strip()
     password = data.get("password") or ""
     if not identifier or not password:
-        return api_error("Identifier and password are required.", 400, "missing_credentials")
+        return api_error("Phone number and password are required.", 400, "missing_credentials")
 
     with db() as conn:
         cur = dict_cursor(conn)
@@ -2732,7 +2732,7 @@ def api_login():
         cur.close()
 
     if not user:
-        return api_error("Invalid credentials.", 401, "invalid_credentials")
+        return api_error("Invalid phone number or password.", 401, "invalid_credentials")
     if user["status"] not in {"active", "pending"}:
         return api_error("Account is blocked.", 403, "account_blocked")
 
@@ -2804,7 +2804,7 @@ def api_create_user():
     if role == "admin" and request.api_user["role"] != "developer":
         return api_error("Only developer can create admins.", 403, "permission_denied")
     if not username or not phone or not password:
-        return api_error("Name, phone/email and password are required.", 400, "missing_fields")
+        return api_error("Name, phone number and password are required.", 400, "missing_fields")
 
     try:
         with db() as conn:
@@ -2818,7 +2818,7 @@ def api_create_user():
             conn.commit()
             cur.close()
     except IntegrityError:
-        return api_error("Username or phone already exists.", 409, "user_exists")
+        return api_error("Name or phone number already exists.", 409, "user_exists")
 
     return jsonify({"user": api_user_payload(user)}), 201
 
@@ -2831,7 +2831,7 @@ def api_register_student():
     level = data.get("level") or data.get("classId") or data.get("courseId")
     payment_sender_phone = (data.get("paymentSenderPhone") or "").strip() or None
     if not username or not phone or not password or not level:
-        return api_error("Name, phone/email, password and course are required.", 400, "missing_fields")
+        return api_error("Name, phone number, password and course are required.", 400, "missing_fields")
     try:
         with db() as conn:
             cur = dict_cursor(conn)
@@ -2844,7 +2844,7 @@ def api_register_student():
             conn.commit()
             cur.close()
     except IntegrityError:
-        return api_error("Username or phone already exists.", 409, "user_exists")
+        return api_error("Name or phone number already exists.", 409, "user_exists")
     return jsonify({"user": api_user_payload(user)}), 201
 
 @app.post("/api/admin/teachers")
