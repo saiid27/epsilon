@@ -114,7 +114,7 @@
             <div class="col-6"><input name="title" class="form-control" placeholder="العنوان" required></div>
             <div class="col-12"><input name="subtitle" class="form-control" placeholder="وصف قصير"></div>
             <div class="col-12"><textarea name="description" class="form-control" rows="2" placeholder="شرح الدورة"></textarea></div>
-            <div class="col-6"><input name="badge" class="form-control" placeholder="متاح / قريبا"></div>
+            <div class="col-6"><input name="badge" class="form-control" placeholder="سعر القسم الكامل"></div>
             <div class="col-6"><input name="icon" class="form-control" placeholder="رمز مثل 📘"></div>
             <div class="col-6">
               <select name="theme" class="form-select">
@@ -138,7 +138,7 @@
       <div class="table-responsive">
         <table class="table table-bordered align-middle text-center bg-white">
           <thead class="table-dark">
-            <tr><th>الكود</th><th>العنوان</th><th>الحالة</th><th>الترتيب</th><th>حذف</th></tr>
+            <tr><th>الكود</th><th>العنوان</th><th>سعر القسم</th><th>الترتيب</th><th>حذف</th></tr>
           </thead>
           <tbody>
             {% for course in courses %}
@@ -176,8 +176,9 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-8"><input name="subject" class="form-control" placeholder="اسم المادة" required></div>
-          <div class="col-4"><input type="number" name="sort_order" class="form-control" value="0"></div>
+          <div class="col-5"><input name="subject" class="form-control" placeholder="اسم المادة" required></div>
+          <div class="col-4"><input name="price" class="form-control" placeholder="سعر المادة"></div>
+          <div class="col-3"><input type="number" name="sort_order" class="form-control" value="0"></div>
           <div class="col-12"><button class="btn btn-primary w-100">إضافة المادة</button></div>
         </form>
       </div>
@@ -186,13 +187,14 @@
       <div class="table-responsive">
         <table class="table table-bordered align-middle text-center bg-white">
           <thead class="table-dark">
-            <tr><th>الدورة</th><th>المادة</th><th>الترتيب</th><th>حذف</th></tr>
+            <tr><th>الدورة</th><th>المادة</th><th>سعر المادة</th><th>الترتيب</th><th>حذف</th></tr>
           </thead>
           <tbody>
             {% for item in course_subjects %}
             <tr>
               <td>{{ item.course_code }}</td>
               <td>{{ item.subject }}</td>
+              <td>{{ item.price or '-' }}</td>
               <td>{{ item.sort_order }}</td>
               <td>
                 <a class="btn btn-danger btn-sm"
@@ -201,7 +203,7 @@
               </td>
             </tr>
             {% else %}
-            <tr><td colspan="4">لا توجد مواد بعد.</td></tr>
+            <tr><td colspan="5">لا توجد مواد بعد.</td></tr>
             {% endfor %}
           </tbody>
         </table>

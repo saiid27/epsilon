@@ -725,11 +725,13 @@ def ensure_courses_table():
                 id SERIAL PRIMARY KEY,
                 course_code VARCHAR(40) NOT NULL REFERENCES courses(code) ON DELETE CASCADE,
                 subject VARCHAR(80) NOT NULL,
+                price VARCHAR(40) DEFAULT '',
                 sort_order INT DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE (course_code, subject)
             )
         """)
+        cur.execute("ALTER TABLE course_subjects ADD COLUMN IF NOT EXISTS price VARCHAR(40) DEFAULT ''")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS lessons (
                 id SERIAL PRIMARY KEY,
@@ -1046,12 +1048,12 @@ def fetch_course_subjects(course_code=None):
         with db() as conn:
             cur = dict_cursor(conn)
             if course_code:
-                cur.execute("""SELECT id, course_code, subject, sort_order
+                cur.execute("""SELECT id, course_code, subject, price, sort_order
                                FROM course_subjects
                                WHERE course_code=%s
                                ORDER BY sort_order ASC, id ASC""", (course_code,))
             else:
-                cur.execute("""SELECT id, course_code, subject, sort_order
+                cur.execute("""SELECT id, course_code, subject, price, sort_order
                                FROM course_subjects
                                ORDER BY course_code ASC, sort_order ASC, id ASC""")
             rows = cur.fetchall()
@@ -1062,7 +1064,7 @@ def fetch_course_subjects(course_code=None):
         default_subjects = ["Math", "Physique", "Chimie", "Science naturelle"]
         courses = [course_code] if course_code else [course["code"] for course in COURSES]
         return [
-            {"id": index, "course_code": code, "subject": subject, "sort_order": index}
+            {"id": index, "course_code": code, "subject": subject, "price": "", "sort_order": index}
             for code in courses
             for index, subject in enumerate(default_subjects, start=1)
         ]
@@ -2084,6 +2086,7 @@ def admin_create_course():
 def admin_create_course_subject():
     course_code = request.form.get("course_code","").strip()
     subject = request.form.get("subject","").strip()
+    price = request.form.get("price","").strip()
     sort_order = request.form.get("sort_order","0").strip()
     if not course_code or not subject:
         flash("La formation et la matiÃ¨re sont requises.", "danger")
@@ -2097,9 +2100,9 @@ def admin_create_course_subject():
         with db() as conn:
             cur = conn.cursor()
             cur.execute("""
-                INSERT INTO course_subjects (course_code, subject, sort_order)
-                VALUES (%s,%s,%s)
-            """, (course_code, subject, sort_order))
+                INSERT INTO course_subjects (course_code, subject, price, sort_order)
+                VALUES (%s,%s,%s,%s)
+            """, (course_code, subject, price, sort_order))
             conn.commit(); cur.close()
         flash("MatiÃ¨re ajoutÃ©e.", "success")
     except IntegrityError:
@@ -2424,6 +2427,7 @@ def api_course_payload(course, subjects_by_course=None, teachers_by_course_subje
         subject_details.append({
             "name": subject_name,
             "teacherName": teacher_name,
+            "price": row.get("price") or "",
         })
     return {
         "id": course["code"],
@@ -2964,10 +2968,19 @@ def api_create_course():
                        VALUES (%s,%s,%s,%s,%s,%s,TRUE)
                        RETURNING *""", (code, title, description, description, price, sort_order))
         course = cur.fetchone()
-        for index, subject in enumerate([str(item).strip() for item in subjects if str(item).strip()], start=1):
-            cur.execute("""INSERT INTO course_subjects (course_code, subject, sort_order)
-                           VALUES (%s,%s,%s)
-                           ON CONFLICT (course_code, subject) DO NOTHING""", (code, subject, index))
+        for index, item in enumerate(subjects, start=1):
+            if isinstance(item, dict):
+                subject = str(item.get("name") or item.get("subject") or "").strip()
+                subject_price = str(item.get("price") or "").strip()
+            else:
+                subject = str(item).strip()
+                subject_price = ""
+            if not subject:
+                continue
+            cur.execute("""INSERT INTO course_subjects (course_code, subject, price, sort_order)
+                           VALUES (%s,%s,%s,%s)
+                           ON CONFLICT (course_code, subject) DO UPDATE SET price=EXCLUDED.price""",
+                        (code, subject, subject_price, index))
         conn.commit()
         cur.close()
     return jsonify({"course": api_course_payload(course)}), 201
