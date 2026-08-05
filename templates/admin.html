@@ -103,6 +103,55 @@
   </div>
 
   <hr class="my-4">
+  <h5 class="mb-3">طرق الدفع</h5>
+  <div class="row g-3">
+    <div class="col-12 col-lg-5">
+      <div class="card p-3 shadow-sm">
+        <h6 class="mb-3">إضافة طريقة دفع</h6>
+        <form method="POST" action="{{ url_for('admin_create_payment_method') }}" class="row g-2">
+          <div class="col-6"><input name="name" class="form-control" placeholder="بنكيلي / مصرفي" required></div>
+          <div class="col-6"><input name="account_number" class="form-control" placeholder="رقم الحساب" required></div>
+          <div class="col-8"><input name="image_url" class="form-control" placeholder="رابط صورة الشعار"></div>
+          <div class="col-4"><input type="number" name="sort_order" class="form-control" value="0" placeholder="الترتيب"></div>
+          <div class="col-12"><button class="btn btn-primary w-100">إضافة طريقة الدفع</button></div>
+        </form>
+      </div>
+    </div>
+    <div class="col-12 col-lg-7">
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle text-center bg-white">
+          <thead class="table-dark">
+            <tr><th>الطريقة</th><th>الرقم</th><th>الصورة</th><th>الترتيب</th><th>حذف</th></tr>
+          </thead>
+          <tbody>
+            {% for method in settings.paymentMethods %}
+            <tr>
+              <td>{{ method.name }}</td>
+              <td>{{ method.accountNumber }}</td>
+              <td>
+                {% if method.imageUrl %}
+                  <a href="{{ method.imageUrl }}" target="_blank">عرض</a>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>{{ method.sortOrder }}</td>
+              <td>
+                <a class="btn btn-danger btn-sm"
+                   href="{{ url_for('admin_delete_payment_method', method_id=method.id) }}"
+                   onclick="return confirm('حذف طريقة الدفع؟')">حذف</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">لا توجد طرق دفع بعد.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <hr class="my-4">
   <h5 class="mb-3">إدارة الدورات</h5>
   <div class="row g-3">
     <div class="col-12 col-lg-5">

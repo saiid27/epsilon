@@ -773,6 +773,17 @@ def ensure_courses_table():
             )
         """)
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS payment_methods (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                account_number VARCHAR(80) NOT NULL,
+                image_url TEXT DEFAULT '',
+                sort_order INT DEFAULT 0,
+                active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS active_site_visitors (
                 visitor_key VARCHAR(80) PRIMARY KEY,
                 last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -946,6 +957,7 @@ def fetch_app_settings():
         "visitorAutoSubtractAmount": "0",
         "visitorAutoSubtractEverySeconds": "60",
         "visitorAutomationStartedAt": "0",
+        "paymentMethods": [],
     }
     try:
         ensure_courses_table()
@@ -956,10 +968,46 @@ def fetch_app_settings():
             cur.close()
         settings = defaults.copy()
         settings.update({row["key"]: row["value"] for row in rows})
+        settings["paymentMethods"] = fetch_payment_methods()
         return settings
     except psycopg2.OperationalError as e:
         print("Database unavailable, using default settings:", e)
         return defaults
+
+def api_payment_method_payload(method):
+    return {
+        "id": str(method["id"]),
+        "name": method["name"],
+        "accountNumber": method["account_number"],
+        "imageUrl": method.get("image_url") or "",
+        "sortOrder": method.get("sort_order") or 0,
+        "isActive": bool(method.get("active")),
+    }
+
+def fetch_payment_methods(active_only=True):
+    try:
+        ensure_courses_table()
+        with db() as conn:
+            cur = dict_cursor(conn)
+            if active_only:
+                cur.execute("""
+                    SELECT id, name, account_number, image_url, sort_order, active
+                    FROM payment_methods
+                    WHERE active=TRUE
+                    ORDER BY sort_order ASC, id ASC
+                """)
+            else:
+                cur.execute("""
+                    SELECT id, name, account_number, image_url, sort_order, active
+                    FROM payment_methods
+                    ORDER BY sort_order ASC, id ASC
+                """)
+            rows = cur.fetchall()
+            cur.close()
+        return [api_payment_method_payload(row) for row in rows]
+    except psycopg2.OperationalError as e:
+        print("Database unavailable, using default payment methods:", e)
+        return []
 
 def save_app_settings(values):
     ensure_courses_table()
@@ -2120,6 +2168,42 @@ def admin_delete_course_subject(sid):
     flash("MatiÃ¨re supprimÃ©e.", "warning")
     return redirect(url_for("admin_dashboard"))
 
+@app.route("/admin/payment-methods/create", methods=["POST"])
+@admin_login_required
+def admin_create_payment_method():
+    name = request.form.get("name", "").strip()
+    account_number = request.form.get("account_number", "").strip()
+    image_url = request.form.get("image_url", "").strip()
+    sort_order = request.form.get("sort_order", "0").strip()
+    if not name or not account_number:
+        flash("اسم طريقة الدفع والرقم مطلوبان.", "danger")
+        return redirect(url_for("admin_dashboard"))
+    try:
+        sort_order = int(sort_order)
+    except ValueError:
+        sort_order = 0
+    ensure_courses_table()
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO payment_methods (name, account_number, image_url, sort_order, active)
+            VALUES (%s,%s,%s,%s,TRUE)
+        """, (name, account_number, image_url, sort_order))
+        conn.commit(); cur.close()
+    flash("تمت إضافة طريقة الدفع.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/payment-methods/delete/<int:method_id>")
+@admin_login_required
+def admin_delete_payment_method(method_id):
+    ensure_courses_table()
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM payment_methods WHERE id=%s", (method_id,))
+        conn.commit(); cur.close()
+    flash("تم حذف طريقة الدفع.", "warning")
+    return redirect(url_for("admin_dashboard"))
+
 @app.route("/admin/users/<int:uid>/assign-teacher", methods=["POST"])
 @admin_login_required
 def admin_assign_teacher(uid):
@@ -3017,6 +3101,41 @@ def api_update_settings():
         "paymentAmount": data.get("paymentAmount"),
     })
     return jsonify({"settings": settings})
+
+@app.post("/api/payment-methods")
+@api_login_required(ADMIN_ROLES)
+def api_create_payment_method():
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    account_number = (data.get("accountNumber") or data.get("account_number") or "").strip()
+    image_url = (data.get("imageUrl") or data.get("image_url") or "").strip()
+    if not name or not account_number:
+        return api_error("Payment method name and account number are required.", 400, "missing_payment_method")
+    try:
+        sort_order = int(data.get("sortOrder") or data.get("sort_order") or 0)
+    except (TypeError, ValueError):
+        sort_order = 0
+    ensure_courses_table()
+    with db() as conn:
+        cur = dict_cursor(conn)
+        cur.execute("""
+            INSERT INTO payment_methods (name, account_number, image_url, sort_order, active)
+            VALUES (%s,%s,%s,%s,TRUE)
+            RETURNING id, name, account_number, image_url, sort_order, active
+        """, (name, account_number, image_url, sort_order))
+        method = cur.fetchone()
+        conn.commit(); cur.close()
+    return jsonify({"paymentMethod": api_payment_method_payload(method), "settings": fetch_app_settings()}), 201
+
+@app.delete("/api/payment-methods/<int:method_id>")
+@api_login_required(ADMIN_ROLES)
+def api_delete_payment_method(method_id):
+    ensure_courses_table()
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM payment_methods WHERE id=%s", (method_id,))
+        conn.commit(); cur.close()
+    return jsonify({"ok": True, "settings": fetch_app_settings()})
 
 @app.post("/api/classes")
 @api_login_required(ADMIN_ROLES)
