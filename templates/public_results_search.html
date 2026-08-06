@@ -103,24 +103,38 @@
     .result-hero {
       position: relative;
       margin-top: 14px;
+      min-height: 58px;
+      padding: 9px 10px 9px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
       border: 1px solid var(--line);
       border-radius: 15px;
-      overflow: hidden;
       background: #fff;
       box-shadow: var(--shadow);
     }
 
-    .result-hero img {
-      display: block;
-      width: 100%;
-      aspect-ratio: 16 / 9;
+    .brand-strip {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--blue-dark);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .brand-strip img {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      border-radius: 10px;
       object-fit: cover;
+      box-shadow: 0 6px 14px rgba(47, 91, 234, .12);
     }
 
     .new-search {
-      position: absolute;
-      top: 10px;
-      left: 10px;
       min-height: 34px;
       padding: 0 12px;
       border: 1px solid rgba(229, 234, 245, .9);
@@ -239,6 +253,46 @@
       background: #edfff4;
       color: #11814f;
       text-align: right;
+    }
+
+    .outcome-message {
+      min-height: 64px;
+      padding: 9px 11px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 11px;
+    }
+
+    .outcome-logo {
+      width: 46px;
+      height: 46px;
+      flex: 0 0 auto;
+      border-radius: 14px;
+      object-fit: cover;
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(15, 138, 120, .12);
+    }
+
+    .outcome-copy {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+      text-align: right;
+    }
+
+    .outcome-copy strong {
+      color: #11935d;
+      font-size: 17px;
+      line-height: 1.15;
+      font-weight: 900;
+    }
+
+    .outcome-copy span {
+      color: #536174;
+      font-size: 13px;
+      line-height: 1.25;
+      font-weight: 800;
     }
 
     .message.notice {
@@ -413,7 +467,10 @@
     </section>
 
     <section class="result-hero hidden" id="resultHero" aria-label="Epsilon Education">
-      <img src="{{ url_for('static', filename='login_hero.png') }}" alt="Epsilon Education">
+      <div class="brand-strip">
+        <img src="{{ url_for('static', filename='epsilon-logo.jpeg') }}" alt="Epsilon Education">
+        <span>Epsilon Education</span>
+      </div>
       <button class="new-search" id="newSearchButton" type="button">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M19 12H5m6-6-6 6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -436,6 +493,7 @@
     const resultsEl = document.getElementById('results');
     const applauseAudio = document.getElementById('applauseAudio');
     const celebration = document.getElementById('celebration');
+    const epsilonLogoUrl = {{ url_for('static', filename='epsilon-logo.jpeg')|tojson }};
 
     const labels = {
       fullName: 'الاسم الكامل',
@@ -583,7 +641,15 @@
         </div>
       `).join('');
       return `
-        ${message ? `<div class="message ${message.className}"><strong>${message.title}</strong><br>${message.subtitle}</div>` : ''}
+        ${message ? `
+          <div class="message ${message.className} outcome-message">
+            <img class="outcome-logo" src="${epsilonLogoUrl}" alt="Epsilon Education">
+            <div class="outcome-copy">
+              <strong>${escapeHtml(message.title)}</strong>
+              <span>${escapeHtml(message.subtitle)}</span>
+            </div>
+          </div>
+        ` : ''}
         <article class="result-card">
           <h2>${icon()}<span>بيانات المترشح</span></h2>
           ${rows}
