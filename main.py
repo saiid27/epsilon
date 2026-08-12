@@ -2549,12 +2549,13 @@ def api_lesson_payload(lesson):
         "createdAt": lesson["uploaded_at"].isoformat() if lesson.get("uploaded_at") else None,
     }
 
-RESULT_EXAM_TYPES = {"concours", "brevet", "bac-first", "bac-second"}
+RESULT_EXAM_TYPES = {"concours", "brevet", "bac-first", "bac-second", "excellence"}
 RESULT_EXAM_LABELS = {
     "concours": "كونكور",
     "brevet": "ابريفة",
     "bac-first": "الباكالوريا الدورة الأولى",
     "bac-second": "الباكالوريا الدورة التكميلية",
+    "excellence": "مسابقة الامتياز",
 }
 RESULT_FIELD_ALIASES = {
     "candidate_number": [
